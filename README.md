@@ -294,27 +294,44 @@ CREATE TABLE `livelli_autorizzazione` (
 
 ## 🚀 Installazione e Setup
 
-### Prerequisiti
+### 🎯 Setup Automatico (Raccomandato)
 
-- **PHP**: 8.2 o superiore
+**Il modo più semplice per installare il sistema:**
+
+1. **Upload Files**: Carica tutti i file sul tuo server web
+2. **Accedi al Setup**: Vai su `http://tuodominio.com/setup.php`
+3. **Segui il Wizard**: Il sistema ti guiderà attraverso:
+   - ✅ Controllo prerequisiti automatico
+   - ⚙️ Configurazione database guidata
+   - 📊 Importazione schema automatica
+   - 👤 Creazione utente amministratore
+   - 🔧 Generazione file configurazione
+
+4. **Completa l'installazione**: Elimina `setup.php` per sicurezza
+
+### 📋 Prerequisiti
+
+- **PHP**: 8.0+ con estensioni: mysqli, session, json, mbstring, fileinfo, gd
 - **MySQL/MariaDB**: 8.0 o superiore  
 - **Web Server**: Apache/Nginx
-- **Composer**: Per gestione dipendenze
+- **Composer**: Per gestione dipendenze (opzionale)
 
-### Passo 1: Clone Repository
+### 🛠️ Setup Manuale (Avanzato)
+
+#### Passo 1: Clone Repository
 
 ```bash
 git clone https://github.com/a080502/Gestione_km.git
 cd Gestione_km
 ```
 
-### Passo 2: Installazione Dipendenze
+#### Passo 2: Installazione Dipendenze
 
 ```bash
-composer install
+composer install  # Opzionale - TCPDF già incluso
 ```
 
-### Passo 3: Configurazione Database
+#### Passo 3: Configurazione Database
 
 1. **Crea Database**:
    ```sql
@@ -327,26 +344,23 @@ composer install
    ```
 
 3. **Configura Connessione**:
-   Crea file `editable_config.php`:
-   ```php
-   <?php
-   return [
-       'DB_HOST' => 'localhost',
-       'DB_USERNAME' => 'your_username',
-       'DB_PASSWORD' => 'your_password',
-       'DB_NAME' => 'chilometri'
-   ];
+   ```bash
+   cp editable_config.php.example editable_config.php
+   # Modifica le credenziali database
    ```
 
-### Passo 4: Configurazione Permessi
+#### Passo 4: Configurazione Permessi
 
 ```bash
-chmod 755 uploads/
-chmod 755 uploads/cedolini/
+chmod 755 uploads/ uploads/cedolini/
 chmod 644 editable_config.php
 ```
 
-### Passo 5: Setup Web Server
+#### Passo 5: Verifica Installazione
+
+Visita `http://tuodominio.com/status.php` per controllare lo stato del sistema.
+
+### 🔧 Setup Web Server
 
 #### Apache (.htaccess)
 ```apache

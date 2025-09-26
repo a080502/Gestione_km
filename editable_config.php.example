@@ -1,0 +1,41 @@
+<?php
+/**
+ * Esempio di configurazione per editable_config.php
+ * Copiare e rinominare questo file in "editable_config.php"
+ * e modificare i valori secondo le proprie necessità
+ */
+
+return [
+    // Configurazione Database
+    'DB_HOST' => 'localhost',              // Host del database MySQL/MariaDB
+    'DB_USERNAME' => 'your_username',      // Username database
+    'DB_PASSWORD' => 'your_password',      // Password database  
+    'DB_NAME' => 'chilometri',             // Nome del database
+    
+    // Configurazioni opzionali (future espansioni)
+    'APP_ENV' => 'production',             // Ambiente: development, production
+    'APP_DEBUG' => false,                  // Debug mode (solo development)
+    'APP_TIMEZONE' => 'Europe/Rome',       // Timezone dell'applicazione
+    
+    // Configurazione Email (futuro)
+    'MAIL_HOST' => 'smtp.example.com',
+    'MAIL_PORT' => 587,
+    'MAIL_USERNAME' => '',
+    'MAIL_PASSWORD' => '',
+    'MAIL_FROM_ADDRESS' => 'noreply@yourcompany.com',
+    'MAIL_FROM_NAME' => 'Sistema Gestione Chilometri',
+    
+    // Configurazione Upload
+    'MAX_UPLOAD_SIZE' => 5242880,          // 5MB in bytes
+    'ALLOWED_EXTENSIONS' => ['jpg', 'jpeg', 'png', 'pdf'],
+    
+    // Sicurezza
+    'SESSION_LIFETIME' => 7200,            // 2 ore in secondi
+    'PASSWORD_MIN_LENGTH' => 6,
+    'LOGIN_ATTEMPTS_LIMIT' => 5,
+    
+    // Configurazioni aziendali
+    'COMPANY_NAME' => 'La Tua Azienda',
+    'COMPANY_LOGO' => 'immagini/logo.png',
+    'SUPPORT_EMAIL' => 'support@yourcompany.com',
+];
