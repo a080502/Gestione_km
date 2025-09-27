@@ -193,7 +193,10 @@ function backupComplete($config) {
     mkdir($tempDir . '/website', 0755, true);
     
     // Copia backup database
-    copy($dbBackup['file'], $tempDir . '/database/' . basename($dbBackup['file']));
+    if (!copy($dbBackup['file'], $tempDir . '/database/' . basename($dbBackup['file']))) {
+        exec("rm -rf " . escapeshellarg($tempDir));
+        return ['success' => false, 'error' => 'Errore copia file database'];
+    }
     
     // Crea README
     $readme = "=== BACKUP COMPLETO GESTIONE KM ===\n";
@@ -208,10 +211,50 @@ function backupComplete($config) {
     $readme .= "3. Importare SQL da database/\n";
     file_put_contents($tempDir . '/README.txt', $readme);
     
-    // Copia files del progetto
-    $excludes = '--exclude=backups --exclude=' . $tempDir . ' --exclude=.git --exclude=tmp';
-    $copyCommand = "tar -cf - $excludes . | tar -xf - -C " . escapeshellarg($tempDir . '/website/') . " 2>/dev/null";
-    exec($copyCommand);
+    // Lista di elementi da escludere
+    $excludeItems = ['backups', $tempDir, '.git', 'tmp', '.gitignore'];
+    
+    // Copia files del progetto (metodo più affidabile)
+    $items = array_diff(scandir('.'), ['.', '..']);
+    $copyErrors = [];
+    
+    foreach ($items as $item) {
+        // Salta elementi da escludere
+        if (in_array($item, $excludeItems)) {
+            continue;
+        }
+        
+        $sourcePath = $item;
+        $destPath = $tempDir . '/website/' . $item;
+        
+        if (is_dir($sourcePath)) {
+            // Copia directory ricorsivamente
+            $command = "cp -r " . escapeshellarg($sourcePath) . " " . escapeshellarg($destPath) . " 2>&1";
+            $output = [];
+            $return_var = 0;
+            exec($command, $output, $return_var);
+            
+            if ($return_var !== 0) {
+                $copyErrors[] = "Directory $item: " . implode(' ', $output);
+            }
+        } else {
+            // Copia file singolo
+            if (!copy($sourcePath, $destPath)) {
+                $copyErrors[] = "File $item: impossibile copiare";
+            }
+        }
+    }
+    
+    // Verifica che ci siano file copiati
+    $websiteFiles = array_diff(scandir($tempDir . '/website'), ['.', '..']);
+    if (empty($websiteFiles)) {
+        exec("rm -rf " . escapeshellarg($tempDir));
+        $errorMsg = 'Nessun file copiato nella cartella website';
+        if (!empty($copyErrors)) {
+            $errorMsg .= '. Errori: ' . implode('; ', $copyErrors);
+        }
+        return ['success' => false, 'error' => $errorMsg];
+    }
     
     // Crea archivio finale
     $command = "tar -czf " . escapeshellarg($filepath) . " -C " . escapeshellarg($tempDir) . " . 2>&1";
@@ -219,8 +262,10 @@ function backupComplete($config) {
     $return_var = 0;
     exec($command, $output, $return_var);
     
-    // Pulizia
+    // Pulizia directory temporanea
     exec("rm -rf " . escapeshellarg($tempDir));
+    
+    // Pulizia backup database temporaneo
     if (file_exists($dbBackup['file'])) {
         unlink($dbBackup['file']);
     }
@@ -229,12 +274,14 @@ function backupComplete($config) {
         return [
             'success' => true,
             'file' => $filepath,
-            'size' => filesize($filepath)
+            'size' => filesize($filepath),
+            'files_copied' => count($websiteFiles),
+            'copy_errors' => $copyErrors
         ];
     } else {
         return [
             'success' => false,
-            'error' => 'Errore creazione backup completo: ' . implode(' ', $output)
+            'error' => 'Errore creazione archivio finale: ' . implode(' ', $output)
         ];
     }
 }
