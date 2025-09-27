@@ -13,45 +13,56 @@ if (file_exists('editable_config.php')) {
     $config = include 'editable_config.php';
 }
 
-// Funzione per testare la connessione al database
+// Funzione per testare connessione database 
 function testDatabaseConnection($config) {
-    // Verifica che i driver PDO necessari siano disponibili
-    if (!extension_loaded('pdo')) {
-        return ['success' => false, 'error' => 'Estensione PDO non disponibile'];
-    }
-    
-    if (!extension_loaded('pdo_mysql')) {
-        return ['success' => false, 'error' => 'Driver PDO MySQL non disponibile. Installare con: sudo apt install php-mysql'];
-    }
-    
     try {
-        $dsn = "mysql:host={$config['DB_HOST']};charset=utf8mb4";
-        if (!empty($config['DB_NAME'])) {
-            $dsn .= ";dbname={$config['DB_NAME']}";
-        }
-        
-        $pdo = new PDO(
-            $dsn,
-            $config['DB_USERNAME'],
-            $config['DB_PASSWORD'],
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_TIMEOUT => 5 // Timeout 5 secondi
-            ]
+        // Usa MySQLi come il resto del progetto invece di PDO
+        $conn = @new mysqli(
+            $config['DB_HOST'], 
+            $config['DB_USERNAME'], 
+            $config['DB_PASSWORD'], 
+            $config['DB_NAME']
         );
         
-        // Test semplice query
-        $stmt = $pdo->query('SELECT VERSION() as version');
-        $result = $stmt->fetch();
+        // Controlla se la connessione è fallita
+        if ($conn->connect_error) {
+            return [
+                'success' => false, 
+                'error' => 'Errore connessione: ' . $conn->connect_error
+            ];
+        }
+        
+        // Imposta charset
+        if (!$conn->set_charset("utf8mb4")) {
+            return [
+                'success' => false, 
+                'error' => 'Impossibile impostare charset UTF8MB4'
+            ];
+        }
+        
+        // Test query semplice
+        $result = $conn->query('SELECT VERSION() as version');
+        if (!$result) {
+            return [
+                'success' => false, 
+                'error' => 'Errore test query: ' . $conn->error
+            ];
+        }
+        
+        $version = $result->fetch_assoc();
+        $conn->close();
         
         return [
             'success' => true, 
-            'message' => 'Connessione MySQL riuscita', 
-            'version' => $result['version']
+            'message' => 'Connessione database OK',
+            'version' => $version['version']
         ];
         
-    } catch (PDOException $e) {
-        return ['success' => false, 'error' => 'Connessione database fallita: ' . $e->getMessage()];
+    } catch (Exception $e) {
+        return [
+            'success' => false, 
+            'error' => 'Errore: ' . $e->getMessage()
+        ];
     }
 }
 
@@ -92,33 +103,24 @@ function createDatabaseBackup($config) {
     }
 }
 
-// Backup database alternativo con PHP
+// Backup database con MySQLi (allineato al resto del progetto)
 function createDatabaseBackupPHP($config, $filepath) {
-    // Verifica che i driver PDO necessari siano disponibili
-    if (!extension_loaded('pdo')) {
-        return ['success' => false, 'error' => 'Estensione PDO non disponibile'];
-    }
-    
-    if (!extension_loaded('pdo_mysql')) {
-        return ['success' => false, 'error' => 'Driver PDO MySQL non disponibile'];
-    }
-    
     try {
-        $dsn = "mysql:host={$config['DB_HOST']};charset=utf8mb4";
-        if (!empty($config['DB_NAME'])) {
-            $dsn .= ";dbname={$config['DB_NAME']}";
+        // Usa MySQLi come il resto del progetto
+        $conn = new mysqli(
+            $config['DB_HOST'],
+            $config['DB_USERNAME'], 
+            $config['DB_PASSWORD'],
+            $config['DB_NAME']
+        );
+        
+        // Controlla connessione
+        if ($conn->connect_error) {
+            return ['success' => false, 'error' => 'Errore connessione: ' . $conn->connect_error];
         }
         
-        $pdo = new PDO(
-            $dsn,
-            $config['DB_USERNAME'],
-            $config['DB_PASSWORD'],
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
-            ]
-        );
+        // Imposta charset
+        $conn->set_charset("utf8mb4");
         
         $sql = "-- Database Backup Generated on " . date('Y-m-d H:i:s') . "\n";
         $sql .= "-- Database: {$config['DB_NAME']}\n\n";
@@ -127,26 +129,42 @@ function createDatabaseBackupPHP($config, $filepath) {
         $sql .= "START TRANSACTION;\n\n";
         
         // Ottieni tutte le tabelle
-        $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+        $tables = [];
+        $result = $conn->query("SHOW TABLES");
+        if ($result) {
+            while ($row = $result->fetch_array()) {
+                $tables[] = $row[0];
+            }
+        }
         
         foreach ($tables as $table) {
             // Struttura tabella
-            $createTable = $pdo->query("SHOW CREATE TABLE `$table`")->fetch(PDO::FETCH_ASSOC);
-            $sql .= "-- Structure for table `$table`\n";
-            $sql .= "DROP TABLE IF EXISTS `$table`;\n";
-            $sql .= $createTable['Create Table'] . ";\n\n";
+            $createResult = $conn->query("SHOW CREATE TABLE `$table`");
+            if ($createResult) {
+                $createRow = $createResult->fetch_assoc();
+                
+                $sql .= "-- Structure for table `$table`\n";
+                $sql .= "DROP TABLE IF EXISTS `$table`;\n";
+                $sql .= $createRow['Create Table'] . ";\n\n";
+            }
             
             // Dati tabella
-            $rows = $pdo->query("SELECT * FROM `$table`")->fetchAll(PDO::FETCH_ASSOC);
-            if (!empty($rows)) {
+            $dataResult = $conn->query("SELECT * FROM `$table`");
+            if ($dataResult && $dataResult->num_rows > 0) {
                 $sql .= "-- Data for table `$table`\n";
-                $columns = array_keys($rows[0]);
-                $columnList = '`' . implode('`, `', $columns) . '`';
                 
-                foreach ($rows as $row) {
-                    $values = array_map(function($value) use ($pdo) {
-                        return $value === null ? 'NULL' : $pdo->quote($value);
-                    }, array_values($row));
+                while ($row = $dataResult->fetch_assoc()) {
+                    $columns = array_keys($row);
+                    $columnList = '`' . implode('`, `', $columns) . '`';
+                    
+                    $values = [];
+                    foreach ($row as $value) {
+                        if ($value === null) {
+                            $values[] = 'NULL';
+                        } else {
+                            $values[] = "'" . $conn->real_escape_string($value) . "'";
+                        }
+                    }
                     
                     $sql .= "INSERT INTO `$table` ($columnList) VALUES (" . implode(', ', $values) . ");\n";
                 }
@@ -155,6 +173,7 @@ function createDatabaseBackupPHP($config, $filepath) {
         }
         
         $sql .= "COMMIT;\n";
+        $conn->close();
         
         if (file_put_contents($filepath, $sql)) {
             return ['success' => true, 'file' => $filepath, 'size' => filesize($filepath)];
@@ -162,7 +181,7 @@ function createDatabaseBackupPHP($config, $filepath) {
             return ['success' => false, 'error' => 'Impossibile scrivere il file di backup'];
         }
         
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         return ['success' => false, 'error' => 'Errore database: ' . $e->getMessage()];
     }
 }
@@ -449,8 +468,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     try {
         switch ($_POST['action']) {
             case 'backup_database':
-                $result = createDatabaseBackup($config);
-                echo json_encode($result);
+                // Verifica se MySQLi o PDO sono disponibili
+                if (!class_exists('mysqli') && !extension_loaded('pdo_mysql')) {
+                    echo json_encode([
+                        'success' => false, 
+                        'error' => 'Driver MySQL non disponibili. MySQLi e PDO MySQL non sono installati in questo ambiente.'
+                    ]);
+                } else {
+                    $result = createDatabaseBackup($config);
+                    echo json_encode($result);
+                }
                 break;
                 
             case 'backup_files':

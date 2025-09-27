@@ -8,4 +8,6 @@ return array (
   'DB_NAME' => 'chilometri',
   'SITE_TITLE' => 'Gestione Km Mezzi',
   'ITEMS_PER_PAGE' => 10,
+  'COMPANY_LOGO' => 'immagini/logo.png',
+  'COMPANY_NAME' => 'La Tua Azienda',
 );
