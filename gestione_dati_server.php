@@ -29,6 +29,68 @@ if (isset($_POST['action']) && $_POST['action'] === 'test_db_connection') {
     exit(); // Termina lo script dopo aver inviato la risposta JSON
 }
 
+// Gestione operazioni sui backup del logo
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $response = ['success' => false, 'message' => ''];
+    
+    if ($_POST['action'] === 'restore_backup') {
+        $backupFile = $_POST['backup_file'] ?? '';
+        $backupPath = 'immagini/' . $backupFile;
+        $currentLogoPath = 'immagini/logo.png';
+        
+        // Validazione nome file backup per sicurezza
+        if (preg_match('/^logo_hold\d+\.png$/', $backupFile) && file_exists($backupPath)) {
+            // Crea backup del logo attuale se esiste
+            if (file_exists($currentLogoPath)) {
+                $holdCounter = 1;
+                $newHoldPath = 'immagini/logo_hold' . $holdCounter . '.png';
+                
+                while (file_exists($newHoldPath)) {
+                    $holdCounter++;
+                    $newHoldPath = 'immagini/logo_hold' . $holdCounter . '.png';
+                }
+                
+                if (rename($currentLogoPath, $newHoldPath)) {
+                    $response['message'] = "Logo attuale salvato come backup. ";
+                }
+            }
+            
+            // Ripristina il backup
+            if (copy($backupPath, $currentLogoPath)) {
+                $response['success'] = true;
+                $response['message'] .= "Backup ripristinato con successo!";
+            } else {
+                $response['message'] = "Errore durante il ripristino del backup.";
+            }
+        } else {
+            $response['message'] = "File di backup non valido o inesistente.";
+        }
+        
+        echo json_encode($response);
+        exit();
+    }
+    
+    if ($_POST['action'] === 'delete_backup') {
+        $backupFile = $_POST['backup_file'] ?? '';
+        $backupPath = 'immagini/' . $backupFile;
+        
+        // Validazione nome file backup per sicurezza
+        if (preg_match('/^logo_hold\d+\.png$/', $backupFile) && file_exists($backupPath)) {
+            if (unlink($backupPath)) {
+                $response['success'] = true;
+                $response['message'] = "Backup eliminato con successo!";
+            } else {
+                $response['message'] = "Errore durante l'eliminazione del backup.";
+            }
+        } else {
+            $response['message'] = "File di backup non valido o inesistente.";
+        }
+        
+        echo json_encode($response);
+        exit();
+    }
+}
+
 
 // --- Controllo di Sicurezza ---
 if (!isset($_SESSION['username'])) {
@@ -47,7 +109,9 @@ $defaultConfig = [
     'DB_PASSWORD' => '',
     'DB_NAME' => 'mydatabase',
     'SITE_TITLE' => 'Il Mio Sito Web',
-    'ITEMS_PER_PAGE' => 10
+    'ITEMS_PER_PAGE' => 10,
+    'COMPANY_LOGO' => 'immagini/logo.png',
+    'COMPANY_NAME' => 'La Tua Azienda'
 ];
 $config = [];
 if (file_exists($configFile)) {
@@ -64,6 +128,67 @@ $perform_delayed_redirect = false; // Flag per il redirect ritardato
 
 // --- Gestione Invio Modulo (richiesta POST per SALVARE) ---
 if ($_SERVER["REQUEST_METHOD"] == "POST" && (!isset($_POST['action']) || $_POST['action'] !== 'test_db_connection')) {
+    
+    // Gestione upload immagine logo
+    $logoPath = $config['COMPANY_LOGO'] ?? 'immagini/logo.png';
+    $logoMessage = '';
+    
+    if (isset($_FILES['company_logo']) && $_FILES['company_logo']['error'] === UPLOAD_ERR_OK) {
+        $uploadDir = 'immagini/';
+        
+        // Crea la cartella se non exists
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $maxSize = 2 * 1024 * 1024; // 2MB
+        
+        $fileType = $_FILES['company_logo']['type'];
+        $fileExt = strtolower(pathinfo($_FILES['company_logo']['name'], PATHINFO_EXTENSION));
+        $fileSize = $_FILES['company_logo']['size'];
+        
+        if (!in_array($fileType, $allowedTypes) || !in_array($fileExt, $allowedExtensions)) {
+            $logoMessage = "Formato immagine non supportato. Usa JPG, PNG, GIF o WebP.";
+            $message_type = 'error';
+        } elseif ($fileSize > $maxSize) {
+            $logoMessage = "File troppo grande. Dimensione massima: 2MB.";
+            $message_type = 'error';
+        } else {
+            // Il nuovo logo si chiamerà sempre logo.png
+            $newFilePath = $uploadDir . 'logo.png';
+            
+            // Se esiste già un logo.png, creane un backup incrementale
+            if (file_exists($newFilePath)) {
+                $backupCounter = 1;
+                $backupPath = $uploadDir . 'logo_hold' . $backupCounter . '.png';
+                
+                // Trova il primo numero disponibile per il backup
+                while (file_exists($backupPath)) {
+                    $backupCounter++;
+                    $backupPath = $uploadDir . 'logo_hold' . $backupCounter . '.png';
+                }
+                
+                // Crea il backup del logo esistente
+                if (rename($newFilePath, $backupPath)) {
+                    $logoMessage = "Logo precedente salvato come backup: logo_hold{$backupCounter}.png. ";
+                } else {
+                    $logoMessage = "Attenzione: impossibile creare backup del logo esistente. ";
+                }
+            }
+            
+            // Salva il nuovo logo come logo.png
+            if (move_uploaded_file($_FILES['company_logo']['tmp_name'], $newFilePath)) {
+                $logoPath = $newFilePath;
+                $logoMessage .= "Nuovo logo caricato con successo come logo.png!";
+            } else {
+                $logoMessage = "Errore durante il caricamento dell'immagine.";
+                $message_type = 'error';
+            }
+        }
+    }
+    
     $newConfig = [
         'DB_HOST' => isset($_POST['db_host']) ? htmlspecialchars(trim($_POST['db_host'])) : $config['DB_HOST'],
         'DB_USERNAME' => isset($_POST['db_username']) ? htmlspecialchars(trim($_POST['db_username'])) : $config['DB_USERNAME'],
@@ -71,6 +196,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && (!isset($_POST['action']) || $_POST[
         'DB_NAME' => isset($_POST['db_name']) ? htmlspecialchars(trim($_POST['db_name'])) : $config['DB_NAME'],
         'SITE_TITLE' => isset($_POST['site_title']) ? htmlspecialchars(trim($_POST['site_title'])) : $config['SITE_TITLE'],
         'ITEMS_PER_PAGE' => isset($_POST['items_per_page']) ? filter_var(trim($_POST['items_per_page']), FILTER_VALIDATE_INT) : $config['ITEMS_PER_PAGE'],
+        'COMPANY_LOGO' => $logoPath,
+        'COMPANY_NAME' => isset($_POST['company_name']) ? htmlspecialchars(trim($_POST['company_name'])) : ($config['COMPANY_NAME'] ?? 'La Tua Azienda'),
     ];
     
     if ($newConfig['ITEMS_PER_PAGE'] === false || $newConfig['ITEMS_PER_PAGE'] < 1) {
@@ -80,7 +207,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && (!isset($_POST['action']) || $_POST[
     $phpCode = "<?php\n// File di configurazione generato automaticamente.\n\nreturn " . var_export($newConfig, true) . ";\n";
 
     if (file_put_contents($configFile, $phpCode) !== false) {
-        $message = "Configurazione aggiornata con successo! Sarai reindirizzato alla pagina index tra 4 secondi.";
+        $finalMessage = "Configurazione aggiornata con successo!";
+        if (!empty($logoMessage)) {
+            $finalMessage .= " " . $logoMessage;
+        }
+        $finalMessage .= " Sarai reindirizzato alla pagina index tra 4 secondi.";
+        
+        $message = $finalMessage;
         $message_type = 'success';
         $config = $newConfig; 
         
@@ -91,6 +224,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && (!isset($_POST['action']) || $_POST[
 
     } else {
         $message = "Errore nel salvataggio della configurazione. Controlla i permessi del file '$configFile'.";
+        if (!empty($logoMessage) && $message_type !== 'error') {
+            $message .= " " . $logoMessage;
+        }
         $message_type = 'error';
     }
 }
@@ -188,6 +324,67 @@ if (isset($_SESSION['flash_message']) && !$perform_delayed_redirect) {
              border-radius: 0.2rem;
         }
         
+        /* Stili per la preview dell'immagine */
+        .logo-preview-container {
+            max-width: 200px;
+            border: 2px dashed #dee2e6;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            text-align: center;
+            background-color: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+        .logo-preview-container:hover {
+            border-color: #0d6efd;
+            background-color: #e7f3ff;
+        }
+        .logo-preview-container img {
+            max-width: 100%;
+            max-height: 150px;
+            object-fit: contain;
+            border-radius: 0.25rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .logo-preview-placeholder {
+            color: #6c757d;
+            font-size: 0.9rem;
+            padding: 2rem 1rem;
+        }
+        .file-upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 0.375rem;
+            padding: 1.5rem;
+            text-align: center;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .file-upload-area:hover {
+            border-color: #0d6efd;
+            background-color: #e7f3ff;
+        }
+        .file-upload-area.dragover {
+            border-color: #198754;
+            background-color: #d1e7dd;
+        }
+
+        .backup-files-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .backup-item {
+            background-color: #f8f9fa;
+        }
+
+        .backup-thumb {
+            width: 40px;
+            height: 30px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        
         /* Stili per l'offcanvas menu */
         .offcanvas-header {
             border-bottom: 1px solid #dee2e6;
@@ -254,7 +451,7 @@ if (isset($_SESSION['flash_message']) && !$perform_delayed_redirect) {
             <p class="mb-0">Il file di configurazione gestito da questa pagina è: <code><?php echo htmlspecialchars($configFile); ?></code>.</p>
         </div>
         
-        <form id="configForm" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST" class="needs-validation" novalidate>
+        <form id="configForm" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
             <fieldset>
                 <legend>⚙️ Configurazione Database</legend>
                 <div class="mb-3">
@@ -289,6 +486,12 @@ if (isset($_SESSION['flash_message']) && !$perform_delayed_redirect) {
             <fieldset class="mt-4">
                 <legend>🌐 Impostazioni Generali Sito</legend>
                 <div class="mb-3">
+                    <label for="company_name" class="form-label">Nome Azienda:</label>
+                    <input type="text" class="form-control" id="company_name" name="company_name" value="<?php echo htmlspecialchars($config['COMPANY_NAME'] ?? 'La Tua Azienda'); ?>">
+                    <div class="form-text">Nome che apparirà nei report PDF e nell'intestazione</div>
+                </div>
+                
+                <div class="mb-3">
                     <label for="site_title" class="form-label">Titolo Sito:</label>
                     <input type="text" class="form-control" id="site_title" name="site_title" value="<?php echo htmlspecialchars($config['SITE_TITLE']); ?>">
                 </div>
@@ -297,6 +500,122 @@ if (isset($_SESSION['flash_message']) && !$perform_delayed_redirect) {
                     <label for="items_per_page" class="form-label">Elementi per Pagina (numero):</label>
                     <input type="number" class="form-control" id="items_per_page" name="items_per_page" value="<?php echo htmlspecialchars($config['ITEMS_PER_PAGE']); ?>" min="1">
                     <div class="invalid-feedback">Inserire un numero valido (minimo 1).</div>
+                </div>
+            </fieldset>
+
+            <fieldset class="mt-4">
+                <legend>🖼️ Logo Aziendale per Report PDF</legend>
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="form-label">Anteprima Attuale:</label>
+                        <div class="logo-preview-container">
+                            <?php 
+                            $currentLogo = $config['COMPANY_LOGO'] ?? 'immagini/logo.png';
+                            if (file_exists($currentLogo)): 
+                            ?>
+                                <img src="<?php echo htmlspecialchars($currentLogo); ?>?v=<?php echo time(); ?>" alt="Logo Aziendale" id="logo-preview">
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <?php 
+                                        $fileSize = round(filesize($currentLogo) / 1024, 1);
+                                        echo "Dimensione: {$fileSize}KB";
+                                        ?>
+                                    </small>
+                                </div>
+                            <?php else: ?>
+                                <div class="logo-preview-placeholder">
+                                    <i class="bi bi-image" style="font-size: 2rem; color: #dee2e6;"></i>
+                                    <div>Nessuna immagine</div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-8">
+                        <label for="company_logo" class="form-label">Carica Nuovo Logo:</label>
+                        <div class="file-upload-area" onclick="document.getElementById('company_logo').click()">
+                            <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #0d6efd;"></i>
+                            <div class="mt-2">
+                                <strong>Clicca per selezionare</strong> o trascina qui il file
+                            </div>
+                            <small class="text-muted">
+                                Formati supportati: JPG, PNG, GIF, WebP<br>
+                                Dimensione massima: 2MB<br>
+                                <strong>Nome file:</strong> Viene sempre salvato come "logo.png"
+                            </small>
+                        </div>
+                        <input type="file" class="form-control d-none" id="company_logo" name="company_logo" accept=".jpg,.jpeg,.png,.gif,.webp,image/*">
+                        
+                        <div class="mt-3" id="file-info" style="display: none;">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <span id="file-name"></span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary float-end" onclick="clearFileSelection()">
+                                    <i class="bi bi-x"></i> Rimuovi
+                                </button>
+                            </div>
+                        </div>
+
+                        <?php 
+                        // Mostra i backup disponibili
+                        $backupFiles = [];
+                        if (is_dir('immagini/')) {
+                            $files = scandir('immagini/');
+                            foreach ($files as $file) {
+                                if (preg_match('/^logo_hold\d+\.png$/', $file)) {
+                                    $backupFiles[] = $file;
+                                }
+                            }
+                        }
+                        
+                        if (!empty($backupFiles)): 
+                            // Ordina i backup per numero
+                            usort($backupFiles, function($a, $b) {
+                                preg_match('/logo_hold(\d+)\.png/', $a, $matchesA);
+                                preg_match('/logo_hold(\d+)\.png/', $b, $matchesB);
+                                return (int)$matchesA[1] - (int)$matchesB[1];
+                            });
+                        ?>
+                        
+                        <div class="mt-3">
+                            <label class="form-label">📦 Backup Disponibili:</label>
+                            <div class="backup-files-container">
+                                <?php foreach ($backupFiles as $backupFile): 
+                                    $backupPath = 'immagini/' . $backupFile;
+                                    $fileSize = round(filesize($backupPath) / 1024, 1);
+                                    $fileTime = date('d/m/Y H:i', filemtime($backupPath));
+                                ?>
+                                <div class="backup-item d-flex align-items-center justify-content-between p-2 border rounded mb-2">
+                                    <div class="backup-info d-flex align-items-center">
+                                        <img src="<?php echo htmlspecialchars($backupPath); ?>?v=<?php echo time(); ?>" alt="Backup" class="backup-thumb me-2">
+                                        <div>
+                                            <strong><?php echo htmlspecialchars($backupFile); ?></strong><br>
+                                            <small class="text-muted"><?php echo $fileTime; ?> • <?php echo $fileSize; ?>KB</small>
+                                        </div>
+                                    </div>
+                                    <div class="backup-actions">
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="restoreBackup('<?php echo htmlspecialchars($backupFile); ?>')">
+                                            <i class="bi bi-arrow-clockwise"></i> Ripristina
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteBackup('<?php echo htmlspecialchars($backupFile); ?>')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <div class="form-text">
+                            <strong>Raccomandazioni:</strong>
+                            <ul class="mb-0 mt-1">
+                                <li>Dimensioni ottimali: 300x150px (o proporzioni simili)</li>
+                                <li>Formato PNG con sfondo trasparente per risultati migliori</li>
+                                <li>L'immagine apparirà nell'intestazione dei report PDF</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </fieldset>
 
@@ -387,7 +706,169 @@ if (isset($_SESSION['flash_message']) && !$perform_delayed_redirect) {
                 form.classList.add('was-validated');
             }, false);
         }
+
+        // Gestione upload logo
+        const logoUpload = document.getElementById('company_logo');
+        if (logoUpload) {
+            logoUpload.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                const fileInfo = document.getElementById('file-info');
+                const fileName = document.getElementById('file-name');
+                
+                if (file) {
+                    // Validazione tipo file
+                    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                    if (!allowedTypes.includes(file.type)) {
+                        alert('Formato file non supportato. Utilizzare JPG, PNG, GIF o WebP.');
+                        e.target.value = '';
+                        return;
+                    }
+                    
+                    // Validazione dimensione (2MB)
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert('Il file è troppo grande. Dimensione massima consentita: 2MB.');
+                        e.target.value = '';
+                        return;
+                    }
+                    
+                    // Mostra info file
+                    const sizeKB = Math.round(file.size / 1024);
+                    fileName.textContent = `📁 ${file.name} (${sizeKB}KB)`;
+                    fileInfo.style.display = 'block';
+                    
+                    // Anteprima immagine
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const preview = document.getElementById('logo-preview');
+                        if (preview) {
+                            preview.src = e.target.result;
+                        } else {
+                            // Crea anteprima se non esiste
+                            const container = document.querySelector('.logo-preview-container');
+                            container.innerHTML = `<img src="${e.target.result}" alt="Anteprima Logo" id="logo-preview">`;
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Gestione drag & drop
+        const uploadArea = document.querySelector('.file-upload-area');
+        if (uploadArea) {
+            // Impedisce il comportamento predefinito del drag & drop sulla pagina
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                document.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            // Gestione drag & drop sull'area di upload
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            uploadArea.addEventListener('drop', handleDrop, false);
+            
+            function highlight(e) {
+                uploadArea.style.backgroundColor = '#e3f2fd';
+                uploadArea.style.borderColor = '#2196f3';
+            }
+            
+            function unhighlight(e) {
+                uploadArea.style.backgroundColor = '';
+                uploadArea.style.borderColor = '';
+            }
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files.length > 0) {
+                    logoUpload.files = files;
+                    // Trigger change event
+                    logoUpload.dispatchEvent(new Event('change'));
+                }
+            }
+        }
+
+        // Salva l'immagine originale per il reset
+        const preview = document.getElementById('logo-preview');
+        if (preview) {
+            preview.dataset.original = preview.src;
+        }
+        
     });
+
+    function clearFileSelection() {
+        document.getElementById('company_logo').value = '';
+        document.getElementById('file-info').style.display = 'none';
+        
+        // Ripristina anteprima originale
+        const preview = document.getElementById('logo-preview');
+        if (preview && preview.dataset.original) {
+            preview.src = preview.dataset.original;
+        }
+    }
+
+    function restoreBackup(backupFile) {
+        if (confirm(`Sei sicuro di voler ripristinare il backup "${backupFile}"?\n\nIl logo attuale verrà sostituito e un nuovo backup verrà creato automaticamente.`)) {
+            const formData = new FormData();
+            formData.append('action', 'restore_backup');
+            formData.append('backup_file', backupFile);
+
+            fetch('<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Backup ripristinato con successo!');
+                    location.reload();
+                } else {
+                    alert('Errore durante il ripristino: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Errore durante il ripristino del backup.');
+                console.error('Errore:', error);
+            });
+        }
+    }
+
+    function deleteBackup(backupFile) {
+        if (confirm(`Sei sicuro di voler eliminare definitivamente il backup "${backupFile}"?\n\nQuesta operazione non può essere annullata.`)) {
+            const formData = new FormData();
+            formData.append('action', 'delete_backup');
+            formData.append('backup_file', backupFile);
+
+            fetch('<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Backup eliminato con successo!');
+                    location.reload();
+                } else {
+                    alert('Errore durante l\'eliminazione: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Errore durante l\'eliminazione del backup.');
+                console.error('Errore:', error);
+            });
+        }
+    }
     </script>
 </body>
 </html>
