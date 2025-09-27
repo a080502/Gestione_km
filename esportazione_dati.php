@@ -10,22 +10,22 @@ include 'query/qutenti.php'; // Assicurati che questo file esista e contenga la 
 
 $username = $_SESSION['username'];
 
-// Recupera i dati dell'Utente per ottenere il livello e la divisione
-$Utente_data = get_user_data($conn, $username);
-// Assicurati che $Utente_data non sia null (Utente non trovato nel DB nonostante la sessione)
-if ($Utente_data === null) {
-      // Gestisci il caso in cui l'Utente loggato non venga trovato nel DB
-      error_log("Utente loggato '$username' non trovato nel database durante recupero dati Utente.");
+// Recupera i dati dell'utente per ottenere il livello e la divisione
+$utente_data = get_user_data($conn, $username);
+// Assicurati che $utente_data non sia null (utente non trovato nel DB nonostante la sessione)
+if ($utente_data === null) {
+      // Gestisci il caso in cui l'utente loggato non venga trovato nel DB
+      error_log("Utente loggato '$username' non trovato nel database durante recupero dati utente.");
       // Potresti voler fare un logout forzato o mostrare un errore
       header("Location: logout.php"); // Esempio: reindirizza al logout
       exit();
 }
-$livello = $Utente_data['livello'];
-$divisione = $Utente_data['divisione'];
+$livello = $utente_data['livello'];
+$divisione = $utente_data['divisione'];
 
 // --- Logica per i filtri Anno/Mese ---
 $anno_selezionato = isset($_GET['anno_selezionato']) ? $_GET['anno_selezionato'] : date('Y');
-$Mese_selezionato = isset($_GET['Mese_selezionato']) ? $_GET['Mese_selezionato'] : date('m');
+$mese_selezionato = isset($_GET['mese_selezionato']) ? $_GET['mese_selezionato'] : date('m');
 
 // --- Costruzione dinamica della clausola WHERE e dei parametri ---
 $where_clauses = [];
@@ -52,10 +52,10 @@ if ($anno_selezionato != 'tutti') {
       $types .= "s";
 }
 
-// Aggiungi filtro per il Mese selezionato (se non è 'tutti')
-if ($Mese_selezionato != 'tutti') {
+// Aggiungi filtro per il mese selezionato (se non è 'tutti')
+if ($mese_selezionato != 'tutti') {
       $where_clauses[] = "DATE_FORMAT(c.data, '%m') = ?";
-      $params[] = $Mese_selezionato;
+      $params[] = $mese_selezionato;
       $types .= "s";
 }
 

@@ -316,142 +316,38 @@ include 'template/header.php';
     </main>
 
 <?php 
+// Script aggiuntivo per anteprima cedolini
+$additional_scripts = '
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const previewContainer = document.getElementById("image-preview-container");
+    if (!previewContainer) return;
+    
+    const previewImage = previewContainer.querySelector("img");
+    const cedolinoLinks = document.querySelectorAll(".cedolino-preview-link");
+
+    cedolinoLinks.forEach(link => {
+        link.addEventListener("mouseover", (event) => {
+            const imageUrl = link.dataset.cedolinoUrl;
+            if (imageUrl) {
+                previewImage.src = imageUrl;
+                previewContainer.style.display = "block";
+                previewContainer.style.left = (event.pageX + 10) + "px";
+                previewContainer.style.top = (event.pageY + 10) + "px";
+            }
+        });
+
+        link.addEventListener("mouseout", () => {
+            previewContainer.style.display = "none";
+        });
+    });
+
+    previewContainer.addEventListener("mouseleave", () => {
+        previewContainer.style.display = "none";
+    });
+});
+</script>';
+
 // Include footer
 include 'template/footer.php';
-?>
-                        <th class="text-end">Euro</th>
-                        <th class="col-hide-mobile">Note</th> <th class="text-center">Cedolino</th>
-                        <th class="text-center">Azioni</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (!empty($records)): ?>
-                        <?php foreach ($records as $row): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars(date("d/m/y", strtotime($row["data"]))); ?></td>
-                                <td class="col-hide-mobile"><?php echo htmlspecialchars($dati_utente['targa_mezzo'] ?? 'N/D'); ?></td>
-                                <td class="col-hide-mobile"><?php echo htmlspecialchars($dati_utente['divisione'] ?? 'N/D'); ?></td>
-                                <td class="col-hide-mobile"><?php echo htmlspecialchars($dati_utente['filiale'] ?? 'N/D'); ?></td>
-                                <td class="text-end"><?php echo htmlspecialchars(number_format($row["chilometri_iniziali"], 0, ',', '.')); ?></td>
-                                <td class="text-end"><?php echo htmlspecialchars(number_format($row["chilometri_finali"], 0, ',', '.')); ?></td>
-                                <td class="text-end"><?php echo htmlspecialchars(number_format($row["litri_carburante"], 2, ',', '.')); ?></td>
-                                <td class="text-end"><?php echo htmlspecialchars(number_format($row["euro_spesi"], 2, ',', '.')); ?> €</td>
-                                <td class="col-hide-mobile"><?php echo !empty($row["note"]) ? htmlspecialchars($row["note"]) : '-'; ?></td>
-                                <td class="text-center action-icons">
-                                    <?php if (!empty($row["percorso_cedolino"]) && file_exists($row["percorso_cedolino"])): ?>
-                                        <a href="<?php echo htmlspecialchars($row["percorso_cedolino"]); ?>" target="_blank" title="Visualizza Cedolino" data-cedolino-url="<?php echo htmlspecialchars($row["percorso_cedolino"]); ?>" class="cedolino-preview-link">
-                                            <i class="bi bi-eye-fill"></i>
-                                        </a>
-                                    <?php else: ?>
-                                        <i class="bi bi-image text-muted" title="Cedolino non disponibile"></i>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-center action-icons">
-                                    <a href="modifica.php?id=<?php echo $row["id"]; ?>" title="Modifica Record">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </a>
-                                    <a href="cancella.php?id=<?php echo $row["id"]; ?>" title="Cancella Record" onclick="return confirm('Sei sicuro di voler cancellare questo record?');">
-                                        <i class="bi bi-trash-fill"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="11" class="text-center fst-italic text-muted p-3">Nessun record trovato per questa pagina o per questo utente.</td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div><?php if ($totale_pagine > 1): ?>
-        <nav aria-label="Navigazione pagine" class="pagination-container">
-            <ul class="pagination">
-                <li class="page-item <?php echo ($pagina_corrente <= 1) ? 'disabled' : ''; ?>">
-                    <a class="page-link" href="?pagina=<?php echo $pagina_corrente - 1; ?>" aria-label="Precedente">
-                        <span aria-hidden="true">&laquo;</span>
-                    </a>
-                </li>
-
-                <?php
-                // Logica per mostrare un numero limitato di pagine (es. +/- 2 dalla corrente)
-                $range = 2;
-                $start = max(1, $pagina_corrente - $range);
-                $end = min($totale_pagine, $pagina_corrente + $range);
-
-                if ($start > 1) {
-                    echo '<li class="page-item"><a class="page-link" href="?pagina=1">1</a></li>';
-                    if ($start > 2) {
-                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                    }
-                }
-
-                for ($i = $start; $i <= $end; $i++): ?>
-                    <li class="page-item <?php echo ($i == $pagina_corrente) ? 'active' : ''; ?>" <?php echo ($i == $pagina_corrente) ? 'aria-current="page"' : ''; ?>>
-                        <a class="page-link" href="?pagina=<?php echo $i; ?>"><?php echo $i; ?></a>
-                    </li>
-                <?php endfor;
-
-                if ($end < $totale_pagine) {
-                    if ($end < $totale_pagine - 1) {
-                         echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                    }
-                    echo '<li class="page-item"><a class="page-link" href="?pagina='.$totale_pagine.'">'.$totale_pagine.'</a></li>';
-                }
-                ?>
-
-                 <li class="page-item <?php echo ($pagina_corrente >= $totale_pagine) ? 'disabled' : ''; ?>">
-                    <a class="page-link" href="?pagina=<?php echo $pagina_corrente + 1; ?>" aria-label="Successivo">
-                        <span aria-hidden="true">&raquo;</span>
-                    </a>
-                </li>
-            </ul>
-        </nav>
-        <?php endif; ?>
-        <div id="image-preview-container">
-            <img src="" alt="Anteprima Cedolino">
-        </div>
-    </div> <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
-    <script>
-        // Opzionale: Inizializza eventuali tooltip di Bootstrap, se li usi
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-          return new bootstrap.Tooltip(tooltipTriggerEl)
-        })
-
-        // Gestione anteprima cedolino
-        const previewContainer = document.getElementById('image-preview-container');
-        const previewImage = previewContainer.querySelector('img');
-        const cedolinoLinks = document.querySelectorAll('.cedolino-preview-link');
-
-        cedolinoLinks.forEach(link => {
-            link.addEventListener('mouseover', (event) => {
-                const imageUrl = link.dataset.cedolinoUrl;
-                if (imageUrl) {
-                    previewImage.src = imageUrl;
-                    previewContainer.style.display = 'block';
-                    // Posiziona l'anteprima vicino al cursore
-                    previewContainer.style.left = (event.pageX + 10) + 'px';
-                    previewContainer.style.top = (event.pageY + 10) + 'px';
-                } else {
-                    previewContainer.style.display = 'none';
-                }
-            });
-
-            link.addEventListener('mouseout', () => {
-                previewContainer.style.display = 'none';
-            });
-        });
-
-        // Nascondi l'anteprima se il mouse esce dal contenitore
-        previewContainer.addEventListener('mouseleave', () => {
-            previewContainer.style.display = 'none';
-        });
-    </script>
-</body>
-</html>
-<?php
-// Chiudi la connessione al database se aperta
-if (isset($conn) && $conn instanceof mysqli) {
-    $conn->close();
-}
 ?>
