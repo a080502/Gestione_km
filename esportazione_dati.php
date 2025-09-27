@@ -135,96 +135,109 @@ if ($sql_anni) {
 }
 
 
+// Include header
+include 'template/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="it">
-<head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Report KM</title>
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-      <style>
-            body {
-                  background-color: #f8f9fa;
-                  padding-top: 60px; /* Spazio per la navbar fissa */
-            }
+    <main class="main-content">
+        <div class="container-fluid">
+            <div class="content-wrapper">
+                <!-- Header pagina -->
+                <div class="page-header mb-4">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h1 class="h3 text-primary fw-bold mb-0">
+                                <i class="bi bi-download me-2"></i>
+                                Esportazione Dati
+                            </h1>
+                            <p class="text-muted mb-0">Filtra ed esporta i dati delle registrazioni chilometriche</p>
+                        </div>
+                        <div class="col-auto">
+                            <div class="badge bg-primary bg-gradient">
+                                <i class="bi bi-database me-1"></i>
+                                Database KM
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-            .fixed-top-elements {
-                  position: fixed;
-                  top: 0;
-                  left: 0;
-                  right: 0;
-                  background-color: #e9ecef;
-                  padding: 10px 15px;
-                  z-index: 1030;
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                  border-bottom: 1px solid #dee2e6;
-            }
+                <!-- Form filtri -->
+                <div class="card shadow-sm mb-4 slide-in">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-funnel me-2"></i>Filtri di Ricerca
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="GET" action="esportazione_dati.php" class="needs-validation" novalidate>
+                            <div class="row g-3">
+                                <div class="col-md-3 col-sm-6">
+                                    <label for="anno_selezionato" class="form-label">
+                                        <i class="bi bi-calendar-year me-1"></i>Anno
+                                    </label>
+                                    <select name="anno_selezionato" id="anno_selezionato" class="form-select">
+                                        <option value='tutti' <?php echo ($anno_selezionato == 'tutti') ? 'selected' : ''; ?>>Tutti gli anni</option>
+                                        <?php
+                                        foreach ($anni_disponibili as $anno) {
+                                            $selected = ($anno_selezionato == $anno) ? 'selected' : '';
+                                            echo "<option value='$anno' $selected>$anno</option>";
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <label for="mese_selezionato" class="form-label">
+                                        <i class="bi bi-calendar-month me-1"></i>Mese
+                                    </label>
+                                    <select name="mese_selezionato" id="mese_selezionato" class="form-select">
+                                        <option value="tutti" <?php if ($mese_selezionato == 'tutti') echo 'selected'; ?>>Tutti i mesi</option>
+                                        <option value="01" <?php if ($mese_selezionato == '01') echo 'selected'; ?>>01 - Gennaio</option>
+                                        <option value="02" <?php if ($mese_selezionato == '02') echo 'selected'; ?>>02 - Febbraio</option>
+                                        <option value="03" <?php if ($mese_selezionato == '03') echo 'selected'; ?>>03 - Marzo</option>
+                                        <option value="04" <?php if ($mese_selezionato == '04') echo 'selected'; ?>>04 - Aprile</option>
+                                        <option value="05" <?php if ($mese_selezionato == '05') echo 'selected'; ?>>05 - Maggio</option>
+                                        <option value="06" <?php if ($mese_selezionato == '06') echo 'selected'; ?>>06 - Giugno</option>
+                                        <option value="07" <?php if ($mese_selezionato == '07') echo 'selected'; ?>>07 - Luglio</option>
+                                        <option value="08" <?php if ($mese_selezionato == '08') echo 'selected'; ?>>08 - Agosto</option>
+                                        <option value="09" <?php if ($mese_selezionato == '09') echo 'selected'; ?>>09 - Settembre</option>
+                                        <option value="10" <?php if ($mese_selezionato == '10') echo 'selected'; ?>>10 - Ottobre</option>
+                                        <option value="11" <?php if ($mese_selezionato == '11') echo 'selected'; ?>>11 - Novembre</option>
+                                        <option value="12" <?php if ($mese_selezionato == '12') echo 'selected'; ?>>12 - Dicembre</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 col-sm-12">
+                                    <label class="form-label">&nbsp;</label>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-primary flex-fill">
+                                            <i class="bi bi-filter me-1"></i>Filtra Dati
+                                        </button>
+                                        <button type="button" class="btn btn-outline-success" onclick="esportaDati()">
+                                            <i class="bi bi-download me-1"></i>Esporta CSV
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
 
-            .menu-btn {
-                  font-size: 1.2rem;
-            }
-
-            .username-display {
-                  font-size: 0.9rem;
-            }
-              table th, table td {
-                  vertical-align: middle; /* Allinea verticalmente al centro */
-              }
-      </style>
-</head>
-<body>
-
-      <div class="fixed-top-elements">
-            <button class="btn btn-outline-secondary menu-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#mainMenu" aria-controls="mainMenu">
-                  <i class="bi bi-list"></i> Menu
-            </button>
-            <div class="username-display">
-                  Utente: <?php echo htmlspecialchars($_SESSION['username']); ?>
-            </div>
-      </div>
-
-      <?php include 'include/menu.php'; ?>
-      <div class="container" id="main-content">
-            <h2 class="mb-4 text-center">Dati Mensili</h2>
-
-            <form method="get" class="row justify-content-center mb-3 g-2"> <div class="col-md-3 col-sm-6">
-                        <select name="anno_selezionato" class="form-select">
-                                <option value='tutti' <?php echo ($anno_selezionato == 'tutti') ? 'selected' : ''; ?>>Tutti gli anni</option>
-                              <?php
-                              foreach ($anni_disponibili as $anno) {
-                                    $selected = ($anno_selezionato == $anno) ? 'selected' : '';
-                                    echo "<option value='$anno' $selected>$anno</option>";
-                              }
-                              ?>
-                        </select>
-                  </div>
-                  <div class="col-md-3 col-sm-6">
-                        <select name="mese_selezionato" class="form-select">
-                              <option value="tutti" <?php if ($mese_selezionato == 'tutti') echo 'selected'; ?>>Tutti i mesi</option>
-                              <option value="01" <?php if ($mese_selezionato == '01') echo 'selected'; ?>>01 - Gennaio</option>
-                              <option value="02" <?php if ($mese_selezionato == '02') echo 'selected'; ?>>02 - Febbraio</option>
-                              <option value="03" <?php if ($mese_selezionato == '03') echo 'selected'; ?>>03 - Marzo</option>
-                              <option value="04" <?php if ($mese_selezionato == '04') echo 'selected'; ?>>04 - Aprile</option>
-                              <option value="05" <?php if ($mese_selezionato == '05') echo 'selected'; ?>>05 - Maggio</option>
-                              <option value="06" <?php if ($mese_selezionato == '06') echo 'selected'; ?>>06 - Giugno</option>
-                              <option value="07" <?php if ($mese_selezionato == '07') echo 'selected'; ?>>07 - Luglio</option>
-                              <option value="08" <?php if ($mese_selezionato == '08') echo 'selected'; ?>>08 - Agosto</option>
-                              <option value="09" <?php if ($mese_selezionato == '09') echo 'selected'; ?>>09 - Settembre</option>
-                              <option value="10" <?php if ($mese_selezionato == '10') echo 'selected'; ?>>10 - Ottobre</option>
-                              <option value="11" <?php if ($mese_selezionato == '11') echo 'selected'; ?>>11 - Novembre</option>
-                              <option value="12" <?php if ($mese_selezionato == '12') echo 'selected'; ?>>12 - Dicembre</option>
-                        </select>
-                  </div>
-                  <div class="col-md-3 col-sm-auto"> <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter me-2"></i> Filtra</button>
-                  </div>
-            </form>
-
-            <div class="table-responsive shadow-sm"> <table class="table table-sm table-striped table-bordered table-hover caption-top" id="reportTable"> <caption><?php echo "Dati filtrati per Anno: <strong>" . htmlspecialchars($anno_selezionato ?? 'N/A') . "</strong>, Mese: <strong>" . htmlspecialchars($mese_selezionato == 'tutti' ? 'Tutti' : ($mese_selezionato ?? 'N/A')) . "</strong>"; ?></caption>
-                        <thead class="table-light">
+                <!-- Tabella risultati -->
+                <div class="card shadow-sm slide-in">
+                    <div class="card-header bg-light">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-table me-2"></i>Risultati
+                                </h5>
+                                <small class="text-muted">
+                                    <?php echo "Anno: <strong>" . htmlspecialchars($anno_selezionato ?? 'N/A') . "</strong>, Mese: <strong>" . htmlspecialchars($mese_selezionato == 'tutti' ? 'Tutti' : ($mese_selezionato ?? 'N/A')) . "</strong>"; ?>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped mb-0" id="reportTable">
+                                <thead class="table-primary sticky-top">
                               <tr>
                                     <th><input type="checkbox" id="selectAllCheckboxes"> Seleziona</th>                                     <th>Mese</th>
                                     <th>Targa</th>
@@ -306,137 +319,171 @@ if ($sql_anni) {
                                       echo "<tr><td colspan='10' class='text-center fst-italic text-muted p-3'>Errore nella preparazione della query principale: " . $conn->error . "</td></tr>";
                               }
 
-
                               ?>
                         </tbody>
-                  </table>
+                        <tfoot class="table-secondary">
+                            <tr class="fw-bold">
+                                <td colspan="4" class="text-end">Totali filtrati:</td>
+                                <td class="text-end">
+                                    <i class="bi bi-speedometer2 me-1"></i>
+                                    <?php echo number_format($totale_chilometri_filtrati, 0, ',', '.'); ?> km
+                                </td>
+                                <td class="text-end">
+                                    <i class="bi bi-fuel-pump me-1"></i>
+                                    <?php echo number_format($totale_litri_filtrati, 2, ',', '.'); ?> L
+                                </td>
+                                <td class="text-end">
+                                    <i class="bi bi-cash-coin me-1"></i>
+                                    <?php echo number_format($totale_euro_filtrati, 2, ',', '.'); ?> €
+                                </td>
+                                <td colspan="3"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
+        </div>
 
-            <table class="table table-bordered mt-3"> <tfoot>
-                        <tr class="table-light">
-                              <td colspan="4" class="text-end"><strong>Totali filtrati (Anno/Mese/Livello):</strong></td>
-                              <td class="text-end"><strong>Km Percorsi: <?php echo htmlspecialchars(number_format($totale_chilometri_filtrati, 0, ',', '.')); ?></strong></td>
-                              <td class="text-end"><strong>Litri: <?php echo number_format($totale_litri_filtrati, 2, ',', '.'); ?></strong></td>
-                              <td class="text-end"><strong>Euro: <?php echo number_format($totale_euro_filtrati, 2, ',', '.'); ?> €</strong></td>
-                              <td colspan="3"></td> </tr>
-                  </tfoot>
-            </table>
-
-
-            <div class="text-center mt-4">
-                    <p>Seleziona le righe desiderate e poi clicca su "Invia Email" o "Crea PDF".</p>
-                  <button onclick="sendEmail()" class="btn btn-success me-2" title="Invia i dati selezionati via email"><i class="bi bi-envelope-fill me-2"></i> Invia Email</button>
-                  <button onclick="createPDF()" class="btn btn-danger" title="Crea un PDF con i dati selezionati"><i class="bi bi-file-earmark-pdf-fill me-2"></i> Crea PDF</button>
+        <!-- Azioni sui dati selezionati -->
+        <div class="card shadow-sm mt-4 slide-in">
+            <div class="card-body text-center">
+                <h6 class="card-title text-muted mb-3">
+                    <i class="bi bi-gear me-2"></i>Azioni sui dati selezionati
+                </h6>
+                <div class="d-flex flex-wrap gap-2 justify-content-center">
+                    <button onclick="esportaDati()" class="btn btn-outline-info" title="Esporta tutti i dati visibili in CSV">
+                        <i class="bi bi-download me-1"></i>Esporta CSV
+                    </button>
+                    <button onclick="sendEmail()" class="btn btn-success" title="Invia i dati selezionati via email">
+                        <i class="bi bi-envelope-fill me-1"></i>Invia Email
+                    </button>
+                    <button onclick="createPDF()" class="btn btn-danger" title="Crea un PDF con i dati selezionati">
+                        <i class="bi bi-file-earmark-pdf-fill me-1"></i>Crea PDF
+                    </button>
+                </div>
             </div>
-      </div>
+        </div>
+    </div>
+</main>
 
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
-      <script>
-            // Le funzioni openNav e closeNav sembrano relative ad un sidebar non presente in questo codice HTML
-            // Potresti averle nel file include/menu.php. Le lascio commentate o le rimuovi se non usate.
-            /*
-            function openNav() {
-                  document.getElementById("mySidebar").style.width = "250px";
-                  document.getElementById("main").style.marginLeft = "250px";
-            }
-
-            function closeNav() {
-                  document.getElementById("mySidebar").style.width = "0";
-                  document.getElementById("main").style.marginLeft = "0";
-            }
-            */
-
-        // *** NUOVO CODICE JAVASCRIPT PER SELECT ALL ***
-        document.addEventListener('DOMContentLoaded', function () {
-            const selectAllCheckbox = document.getElementById('selectAllCheckboxes');
-            const checkboxes = document.querySelectorAll('input[name="selected_rows[]"]');
-
-            if (selectAllCheckbox) {
-                selectAllCheckbox.addEventListener('change', function () {
-                    checkboxes.forEach(function (checkbox) {
-                        checkbox.checked = selectAllCheckbox.checked;
-                    });
-                });
-
-                // Opzionale: Aggiorna lo stato del "select all" se le singole caselle vengono cliccate
-                checkboxes.forEach(function(checkbox) {
-                    checkbox.addEventListener('change', function() {
-                        if (!this.checked) {
-                            selectAllCheckbox.checked = false;
-                        } else {
-                            // Controlla se tutte le singole caselle sono ora selezionate
-                            const allChecked = Array.from(checkboxes).every(chk => chk.checked);
-                            selectAllCheckbox.checked = allChecked;
-                        }
-                    });
-                });
+<script>
+// Funzione per esportare tutti i dati visibili in CSV
+function esportaDati() {
+    const table = document.getElementById('reportTable');
+    const rows = table.querySelectorAll('tr');
+    let csvContent = '';
+    
+    rows.forEach((row, index) => {
+        const cols = row.querySelectorAll(index === 0 ? 'th' : 'td');
+        const rowData = [];
+        
+        cols.forEach((col, colIndex) => {
+            if (colIndex > 0) { // Salta la colonna checkbox
+                let text = col.textContent.trim();
+                // Escape delle virgole e virgolette per CSV
+                if (text.includes(',') || text.includes('"')) {
+                    text = '"' + text.replace(/"/g, '""') + '"';
+                }
+                rowData.push(text);
             }
         });
-        // *** FINE NUOVO CODICE JAVASCRIPT ***
-
-
-            function sendEmail() {
-                  let selectedRows = getSelectedRows();
-                  if (selectedRows.length > 0) {
-                        // Passa i dati serializzati in JSON
-                          const rowsData = selectedRows.map(row => ({
-                                Mese: row.Mese,
-                                Targa: row.Targa,
-                                Utente: row.Utente,
-                                km_percorsi: row.ChilometriPercorsi, // NOTA: Qui stai ancora usando le chiavi originali maiuscole nel map.
-                                litri: row.LitriCarburante,           // Questo genera le chiavi in minuscolo nel JSON inviato.
-                                euro: row.EuroSpesi,                 // È coerente con la correzione fatta nel PDF, ma è una potenziale fonte
-                                registrazioni: row.Registrazioni,   // di confusione se le chiavi PHP originali fossero state usate altrove.
-                                km_finali_Mese: row.KmFinaliMese     // Lascio così per mantenere la compatibilità con il PDF corretto.
-                          }));
-                        window.location.href = 'send_email.php?rows=' + encodeURIComponent(JSON.stringify(rowsData));
-                  } else {
-                        alert('Seleziona almeno una riga.');
-                  }
-            }
-
-            function createPDF() {
-                  let selectedRows = getSelectedRows();
-                  if (selectedRows.length > 0) {
-                          // Passa i dati serializzati in JSON, includendo il nuovo dato
-                          const rowsData = selectedRows.map(row => ({
-                                Mese: row.Mese,
-                                Targa: row.Targa,
-                                Utente: row.Utente,
-                                km_percorsi: row.ChilometriPercorsi, // NOTA: Qui stai ancora usando le chiavi originali maiuscole nel map.
-                                litri: row.LitriCarburante,           // Questo genera le chiavi in minuscolo nel JSON inviato.
-                                euro: row.EuroSpesi,                 // È coerente con la correzione fatta nel PDF, ma è una potenziale fonte
-                                registrazioni: row.Registrazioni,   // di confusione se le chiavi PHP originali fossero state usate altrove.
-                                km_finali_Mese: row.KmFinaliMese     // Lascio così per mantenere la compatibilità con il PDF corretto.
-                          }));
-                          // Passa anche l'username dell'Utente loggato
-                        window.location.href = 'create_pdf.php?rows=' + encodeURIComponent(JSON.stringify(rowsData)) + '&username=<?php echo urlencode($username); ?>';
-                  } else {
-                        alert('Seleziona almeno una riga.');
-                  }
-            }
-
-            function getSelectedRows() {
-                    let selectedRows = [];
-                    let checkboxes = document.querySelectorAll('input[name="selected_rows[]"]:checked');
-                    checkboxes.forEach(function(checkbox) {
-                          try {
-                                // Parse the JSON value stored in the checkbox
-                                let rowData = JSON.parse(checkbox.value);
-                                selectedRows.push(rowData);
-                          } catch (e) {
-                                console.error("Errore nel parsing JSON del checkbox:", e);
-                                // Potresti voler aggiungere un feedback all'Utente qui
-                          }
-                    });
-                    return selectedRows;
-              }
-      </script>
-</body>
-</html>
-<?php
-// Chiudi la connessione al database se aperta
-if (isset($conn) && $conn instanceof mysqli) {
-      $conn->close();
+        
+        if (rowData.length > 0) {
+            csvContent += rowData.join(',') + '\n';
+        }
+    });
+    
+    // Download del file CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'esportazione_km_' + new Date().toISOString().split('T')[0] + '.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
+
+// Select all functionality
+document.addEventListener('DOMContentLoaded', function () {
+    const selectAllCheckbox = document.getElementById('selectAllCheckboxes');
+    const checkboxes = document.querySelectorAll('input[name="selected_rows[]"]');
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function () {
+            checkboxes.forEach(function (checkbox) {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+        });
+
+        checkboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                if (!this.checked) {
+                    selectAllCheckbox.checked = false;
+                } else {
+                    const allChecked = Array.from(checkboxes).every(chk => chk.checked);
+                    selectAllCheckbox.checked = allChecked;
+                }
+            });
+        });
+    }
+});
+
+function sendEmail() {
+    let selectedRows = getSelectedRows();
+    if (selectedRows.length > 0) {
+        const rowsData = selectedRows.map(row => ({
+            Mese: row.Mese,
+            Targa: row.Targa,
+            Utente: row.Utente,
+            km_percorsi: row.ChilometriPercorsi,
+            litri: row.LitriCarburante,
+            euro: row.EuroSpesi,
+            registrazioni: row.Registrazioni,
+            km_finali_Mese: row.KmFinaliMese
+        }));
+        window.location.href = 'send_email.php?rows=' + encodeURIComponent(JSON.stringify(rowsData));
+    } else {
+        showAlert('Seleziona almeno una riga per inviare l\'email.', 'warning');
+    }
+}
+
+function createPDF() {
+    let selectedRows = getSelectedRows();
+    if (selectedRows.length > 0) {
+        const rowsData = selectedRows.map(row => ({
+            Mese: row.Mese,
+            Targa: row.Targa,
+            Utente: row.Utente,
+            km_percorsi: row.ChilometriPercorsi,
+            litri: row.LitriCarburante,
+            euro: row.EuroSpesi,
+            registrazioni: row.Registrazioni,
+            km_finali_Mese: row.KmFinaliMese
+        }));
+        window.location.href = 'create_pdf.php?rows=' + encodeURIComponent(JSON.stringify(rowsData)) + '&username=<?php echo urlencode($username); ?>';
+    } else {
+        showAlert('Seleziona almeno una riga per creare il PDF.', 'warning');
+    }
+}
+
+function getSelectedRows() {
+    let selectedRows = [];
+    let checkboxes = document.querySelectorAll('input[name="selected_rows[]"]:checked');
+    checkboxes.forEach(function(checkbox) {
+        try {
+            let rowData = JSON.parse(checkbox.value);
+            selectedRows.push(rowData);
+        } catch (e) {
+            console.error("Errore nel parsing JSON del checkbox:", e);
+        }
+    });
+    return selectedRows;
+}
+</script>
+
+<?php
+// Include footer
+include 'template/footer.php';
 ?>
