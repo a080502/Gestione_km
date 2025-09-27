@@ -1,61 +1,40 @@
 <?php
-include_once 'config.php'; // Includi configurazione DB
-// File: visualizza_utenti.php (Standardizzato)
+// --- Configurazione pagina ---
+$page_title = "Gestione Utenti";
+$page_description = "Visualizza e gestisci tutti gli utenti del sistema";
+$require_auth = true;
+$require_config = true;
 
-// --- Inizio Blocco Sicurezza e Dati Standardizzati ---
-// Assumi che dati_utente.php gestisca session_start() e il redirect se non loggato
-// e che definisca $_SESSION['username']
-include 'dati_utente.php'; // Gestisce la sessione e l'eventuale redirect al login
+include_once 'config.php';
+include 'dati_utente.php';
 
-
-// Verifica che l'utente sia loggato (ridondante se fatto in dati_utente.php, ma sicurezza extra)
+// Verifica che l'utente sia loggato
 if (!isset($_SESSION['username'])) {
     header("Location: login.php");
     exit();
 }
-// Includi file di query
-include 'query/qutenti.php'; // Funzioni per interagire con la tabella utenti
-// include 'query/q_costo_extra.php'; // Questa inclusione non sembra necessaria in questo file, la rimuovo per pulizia.
 
+include 'query/qutenti.php';
 
-// *** Recupera i dati dell'utente LOGGATO in modo sicuro (Standardizzato) ***
+// Recupera i dati dell'utente loggato
 $username_loggato = $_SESSION['username'];
-$utente_loggato_data = []; // Inizializza l'array
-$livello_utente_loggato = 99; // Default a un livello alto per sicurezza
+$utente_loggato_data = get_user_data($conn, $username_loggato);
 
-
-// Usiamo un prepared statement per recuperare i dati dell'utente loggato
-$sql_user = $conn->prepare("SELECT id, username, password, targa_mezzo, divisione, filiale, livello, Nome, Cognome, time_stamp FROM utenti WHERE username = ? LIMIT 1");
-if ($sql_user) {
-    $sql_user->bind_param("s", $username_loggato);
-    $sql_user->execute();
-    $result_user = $sql_user->get_result();
-    if ($result_user->num_rows > 0) {
-        $utente_loggato_data = $result_user->fetch_assoc();
-        // Aggiungi username per coerenza (anche se già nella chiave 'username')
-        $utente_loggato_data['username'] = $username_loggato;
-        $livello_utente_loggato = $utente_loggato_data['livello']; // Recupera il livello
-    } else {
-        // Questa situazione non dovrebbe verificarsi se dati_utente.php e la tabella utenti sono coerenti
-        error_log("Utente loggato '$username_loggato' non trovato nel database utenti durante il recupero dati in visualizza_utenti.php.");
-        // Reindirizza al logout per sicurezza
-        session_destroy(); // Distrugge tutti i dati della sessione corrente
-        header("Location: login.php"); // Reindirizza alla pagina di login
-        exit();
-    }
-    $sql_user->close();
-} else {
-    error_log("Errore preparazione query dati utente (utenti table) in visualizza_utenti.php: " . $conn->error);
-    die("Errore critico nel recupero dati utente.");
+if (!$utente_loggato_data) {
+    error_log("Utente loggato '$username_loggato' non trovato nel database.");
+    session_destroy();
+    header("Location: login.php");
+    exit();
 }
 
-// Assegna i dati dell'utente alla variabile attesa dal menu.php
-$utente_data = $utente_loggato_data; // <-- AGGIUNTA QUESTA RIGA PER IL MENU
+// Assegna i dati dell'utente per il menu
+$utente_data = $utente_loggato_data;
+$livello_utente_loggato = $utente_data['livello'];
 
-// Modifica la query per recuperare i dati degli utenti in base al livello di autorizzazione
+// Query per recuperare gli utenti in base al livello di autorizzazione
 if ($livello_utente_loggato < 3) {
     // Livello inferiore a 3: visualizza tutti gli utenti
-    $sql = "SELECT id, username, password, targa_mezzo, divisione, filiale, livello, Nome, Cognome, time_stamp FROM utenti";
+    $sql = "SELECT id, username, password, targa_mezzo, divisione, filiale, livello, Nome, Cognome, time_stamp FROM utenti ORDER BY Nome, Cognome";
     $result = $conn->query($sql);
 } else {
     // Livello 3 o superiore: visualizza solo l'utente corrente
@@ -66,242 +45,249 @@ if ($livello_utente_loggato < 3) {
     $result = $stmt->get_result();
 }
 
-// Controlla se la query principale ha avuto successo
-if ($result === false && (isset($stmt) && $stmt->error)) {
-    $error_query = "Errore nell'esecuzione della query: " . (isset($stmt) ? $stmt->error : $conn->error);
-    error_log("Errore query utenti in visualizza_utenti.php: " . $error_query);
-    $result = false; // Assicura che $result sia falso in caso di errore
-}
-
-
+// Include header
+include 'template/header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestione Utenti</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body {
-            background-color: #f8f9fa;
-            padding-top: 80px; /* Standardizzato a 80px */
-        }
+    <!-- Contenuto principale -->
+    <main class="container" id="main-content">
+        <div class="row">
+            <div class="col-12">
+                <!-- Header pagina -->
+                <div class="card slide-in mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h1 class="mb-0 h4">
+                                <i class="bi bi-people-fill me-2"></i>Gestione Utenti
+                            </h1>
+                            <small class="text-light">Visualizza e gestisci gli utenti del sistema</small>
+                        </div>
+                        <?php if ($livello_utente_loggato < 3): ?>
+                        <a href="registrazione.php" class="btn btn-primary">
+                            <i class="bi bi-person-plus me-2"></i>Nuovo Utente
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
 
-        .fixed-top-elements {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background-color: #e9ecef;
-            padding: 10px 15px;
-            z-index: 1030;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #dee2e6;
-            flex-wrap: wrap; /* Aggiunto per responsività */
-        }
-
-        .menu-btn {
-            font-size: 1.2rem;
-        }
-
-        /* Stile standardizzato per il display utente */
-        .user-info-display {
-            font-size: 0.8rem;
-            text-align: right;
-            color: #495057;
-            line-height: 1.3;
-        }
-        .user-info-display strong {
-            display: inline-block;
-            margin-right: 5px;
-        }
-
-
-        .table-responsive {
-            overflow-x: auto;
-            margin-top: 20px;
-        }
-
-        /* Standardizza lo stile dei link di azione */
-        /* Applica stili anche ai form per allinearli */
-        .action-links a, .action-links form {
-            margin-right: 5px; /* Spaziatura tra i bottoni/form */
-            margin-bottom: 5px; /* Aggiunto per spaziatura verticale su schermi piccoli */
-            display: inline-block; /* Assicura che margin-bottom funzioni e stiano sulla stessa riga */
-        }
-        .action-links .btn-danger {
-            margin-left: 0; /* Rimuove il margin-left superfluo */
-            margin-right: 0; /* Gestito dal .action-links a/form */
-        }
-
-        /* Stile per i link e bottoni all'interno di action-links */
-        .action-links a.btn, .action-links form button.btn {
-            padding: .25rem .5rem; /* Padding del btn-sm */
-            font-size: .875rem; /* Font size del btn-sm */
-            line-height: 1.5;
-            border-radius: .2rem; /* Border radius del btn-sm */
-            margin: 0; /* Rimuove margini extra sul bottone stesso */
-            display: inline-block; /* Assicura che si comportino come inline-block */
-        }
-
-        /* Allineamento verticale delle icone */
-        .action-links i {
-            vertical-align: middle; /* Applica vertical-align per l'allineamento */
-            margin-right: 5px; /* Mantiene il margine standard dopo l'icona */
-        }
-
-
-        /* Applica la classe solo per nascondere su mobile */
-        @media (max-width: 767.98px) { /*breakpoint md è 768px */
-            .table .col-hide-mobile {
-                display: none;
-            }
-        }
-    </style>
-</head>
-<body>
-
-<div class="fixed-top-elements">
-    <button class="btn btn-outline-secondary menu-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#mainMenu" aria-controls="mainMenu">
-        <i class="bi bi-list"></i> Menu
-    </button>
-    <div class="user-info-display">
-        <strong>Utente:</strong> <?php echo htmlspecialchars($utente_loggato_data['username']); ?><br>
-        (Liv: <?php echo htmlspecialchars($livello_utente_loggato); ?>)
-    </div>
-</div>
-
-<?php include 'include/menu.php'; ?>
-
-<div class="container" id="main-content">
-    <h1 class="mb-4 text-center">Gestione Utenti</h1>
-    <div class="text-center mb-3">
-        <?php
-        if ($livello_utente_loggato < 3) {
-            echo '<a href="registrazione.php" class="btn btn-success"><i class="bi bi-plus-square me-2"></i> Aggiungi Nuovo Utente</a>';
-        }
-        ?>
-    </div>
-
-    <?php
-    // Gestione messaggi di sessione (Standardizzato con classi dismissible)
-    if (isset($_SESSION['success_message'])) {
-        echo '<div class="alert alert-success alert-dismissible fade show" role="alert">' . htmlspecialchars($_SESSION['success_message']) . '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
-        unset($_SESSION['success_message']);
-    }
-    if (isset($_SESSION['error_message'])) {
-        echo '<div class="alert alert-danger alert-dismissible fade show" role="alert">' . htmlspecialchars($_SESSION['error_message']) . '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
-        unset($_SESSION['error_message']);
-    }
-    if (isset($_SESSION['registrazione_successo'])) {
-        echo '<div class="alert alert-success alert-dismissible fade show" role="alert">' . htmlspecialchars($_SESSION['registrazione_successo']) . '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
-        unset($_SESSION['registrazione_successo']);
-    }
-    // Mostra l'errore nella query se presente
-    if (isset($error_query)): ?>
-        <div class="alert alert-danger" role="alert"><?php echo htmlspecialchars($error_query); ?></div>
-    <?php endif; ?>
-
-
-    <div class="table-responsive shadow-sm">
-        <?php
-        // Mostra la tabella solo se la query ha avuto successo e ci sono risultati
-        if ($result && ( ($result instanceof mysqli_result && $result->num_rows > 0) || (isset($result) && $result instanceof mysqli_stmt && $result->num_rows > 0) ) ) { // Aggiunto controllo isset per $result se è stmt
-            echo "<table class='table table-bordered table-striped table-hover'>";
-            echo "<thead class='table-light'><tr><th>ID</th><th>Nome</th><th>Cognome</th><th>Targa Mezzo</th><th>Filiale</th><th>Autorizzazioni</th><th>Username</th><th class='text-center'>Azioni</th></tr></thead>";
-            echo "<tbody>";
-
-            // Se il risultato è da una query diretta (livello < 3)
-            if ($result instanceof mysqli_result) {
-                $data_rows = $result;
-            }
-            // Se il risultato è da uno statement preparato (livello >= 3)
-            elseif (isset($result) && $result instanceof mysqli_stmt) {
-                // Il risultato è già stato ottenuto con get_result() prima
-                $data_rows = $result; // $result è già il mysqli_result in questo caso dallo statement
-            } else {
-                $data_rows = false; // Caso non gestito o errore
-            }
-
-
-            if ($data_rows) {
-                while($row = $data_rows->fetch_assoc()) {
-                    echo "<tr>";
-                    echo "<td>" . htmlspecialchars($row["id"]) . "</td>";
-                    echo "<td>" . htmlspecialchars($row["Nome"]) . "</td>";
-                    echo "<td>" . htmlspecialchars($row["Cognome"]) . "</td>";
-                    echo "<td>" . htmlspecialchars($row["targa_mezzo"]) . "</td>";
-                    echo "<td>" . htmlspecialchars($row["filiale"]) . "</td>";
-                    echo "<td>" . htmlspecialchars($row["livello"]) . "</td>";
-                    echo "<td>" . htmlspecialchars($row["username"]) . "</td>";
-                    echo "<td class='action-links text-center'>";
-
-                    // Azione Modifica: visibile solo se livello utente loggato < 3
-                    if ($livello_utente_loggato < 4) {
-                        // Standardizzo il link Modifica per usare POST per URL pulito
-                        ?>
-                        <form action="modifica_utente.php" method="post" style="display:inline;">
-                            <input type="hidden" name="id" value="<?php echo htmlspecialchars($row["id"]); ?>">
-                            <button type="submit" class="btn btn-primary btn-sm" title="Modifica Utente">
-                                <i class="bi bi-pencil me-1"></i>Modifica
-                            </button>
-                        </form>
-                        <?php
+                <!-- Statistiche utenti -->
+                <?php if ($result && $result->num_rows > 0): ?>
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card slide-in text-center">
+                            <div class="card-body">
+                                <div class="display-6 text-primary mb-2">
+                                    <i class="bi bi-people-fill"></i>
+                                </div>
+                                <h5 class="card-title"><?php echo $result->num_rows; ?></h5>
+                                <p class="card-text small text-muted">Utenti Totali</p>
+                            </div>
+                        </div>
+                    </div>
+                    <?php 
+                    // Reset del result per contare le statistiche
+                    if (isset($stmt)) {
+                        $stmt->execute();
+                        $result = $stmt->get_result();
                     } else {
-                        // Per livelli >= 3, mostra solo un trattino se non ci sono azioni per loro
-                        // Nel file utente originale non mostrava azioni per >=3, manteniamo coerenza
-                        echo "-";
+                        $result = $conn->query($sql);
                     }
-
-
-                    // Azione Cancella: visibile solo se livello utente loggato < 3
-                    if ($livello_utente_loggato < 3) {
-                        // Il link di cancellazione rimane GET standardizzato
-                        // Assicurati che cancella_utente.php sia preparato per ricevere l'ID via GET
-                        echo "<a href='cancella_utente.php?id=" . htmlspecialchars($row["id"]) . "' class='btn btn-danger btn-sm' onclick=\"return confirm('Sei sicuro di voler cancellare questo utente e non sarà piu recuperabile!!')\" title='Cancella Utente'><i class='bi bi-trash me-1'></i> Cancella</a>";
+                    
+                    $livelli = [1 => 0, 2 => 0, 3 => 0];
+                    $temp_data = [];
+                    while ($row = $result->fetch_assoc()) {
+                        $temp_data[] = $row;
+                        if (isset($livelli[$row['livello']])) {
+                            $livelli[$row['livello']]++;
+                        }
                     }
-                    // Se livello >= 3, il pulsante Cancella non viene mostrato qui, coerente con la logica sopra
+                    ?>
+                    <div class="col-md-3">
+                        <div class="card slide-in text-center">
+                            <div class="card-body">
+                                <div class="display-6 text-danger mb-2">
+                                    <i class="bi bi-shield-fill-exclamation"></i>
+                                </div>
+                                <h5 class="card-title"><?php echo $livelli[1]; ?></h5>
+                                <p class="card-text small text-muted">Amministratori</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card slide-in text-center">
+                            <div class="card-body">
+                                <div class="display-6 text-warning mb-2">
+                                    <i class="bi bi-shield-check"></i>
+                                </div>
+                                <h5 class="card-title"><?php echo $livelli[2]; ?></h5>
+                                <p class="card-text small text-muted">Manager</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card slide-in text-center">
+                            <div class="card-body">
+                                <div class="display-6 text-info mb-2">
+                                    <i class="bi bi-person"></i>
+                                </div>
+                                <h5 class="card-title"><?php echo $livelli[3]; ?></h5>
+                                <p class="card-text small text-muted">Utenti Standard</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabella utenti -->
+                <div class="card slide-in">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-table me-2"></i>Elenco Utenti
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-center d-none d-md-table-cell">ID</th>
+                                        <th><i class="bi bi-person me-1"></i>Nome Completo</th>
+                                        <th class="d-none d-lg-table-cell"><i class="bi bi-at me-1"></i>Username</th>
+                                        <th><i class="bi bi-car-front me-1"></i>Targa</th>
+                                        <th class="d-none d-xl-table-cell"><i class="bi bi-building me-1"></i>Divisione</th>
+                                        <th class="d-none d-xl-table-cell"><i class="bi bi-geo-alt me-1"></i>Filiale</th>
+                                        <th class="text-center"><i class="bi bi-shield me-1"></i>Livello</th>
+                                        <th class="d-none d-md-table-cell text-center"><i class="bi bi-calendar me-1"></i>Registrato</th>
+                                        <?php if ($livello_utente_loggato < 3): ?>
+                                        <th class="text-center">Azioni</th>
+                                        <?php endif; ?>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    foreach ($temp_data as $row) {
+                                        $badge_class = '';
+                                        $livello_text = '';
+                                        switch ($row['livello']) {
+                                            case 1:
+                                                $badge_class = 'bg-danger';
+                                                $livello_text = 'Admin';
+                                                break;
+                                            case 2:
+                                                $badge_class = 'bg-warning text-dark';
+                                                $livello_text = 'Manager';
+                                                break;
+                                            case 3:
+                                                $badge_class = 'bg-info';
+                                                $livello_text = 'Utente';
+                                                break;
+                                            default:
+                                                $badge_class = 'bg-secondary';
+                                                $livello_text = 'Livello ' . $row['livello'];
+                                        }
+                                        
+                                        echo "<tr>";
+                                        echo "<td class='text-center d-none d-md-table-cell'><span class='badge bg-light text-dark'>" . htmlspecialchars($row['id']) . "</span></td>";
+                                        echo "<td>";
+                                        echo "<div class='fw-semibold'>" . htmlspecialchars($row['Nome'] . ' ' . $row['Cognome']) . "</div>";
+                                        echo "<div class='small text-muted d-lg-none'>@" . htmlspecialchars($row['username']) . "</div>";
+                                        echo "</td>";
+                                        echo "<td class='d-none d-lg-table-cell'><code>" . htmlspecialchars($row['username']) . "</code></td>";
+                                        echo "<td><span class='badge bg-primary'>" . htmlspecialchars($row['targa_mezzo']) . "</span></td>";
+                                        echo "<td class='d-none d-xl-table-cell'>" . htmlspecialchars($row['divisione']) . "</td>";
+                                        echo "<td class='d-none d-xl-table-cell'>" . htmlspecialchars($row['filiale']) . "</td>";
+                                        echo "<td class='text-center'><span class='badge {$badge_class}'>{$livello_text}</span></td>";
+                                        echo "<td class='text-center d-none d-md-table-cell'><small>" . date('d/m/Y', strtotime($row['time_stamp'])) . "</small></td>";
+                                        
+                                        if ($livello_utente_loggato < 3) {
+                                            echo "<td class='text-center'>";
+                                            echo "<div class='btn-group btn-group-sm' role='group'>";
+                                            echo "<a href='modifica_utente.php?id=" . $row['id'] . "' class='btn btn-outline-primary btn-sm' title='Modifica'>";
+                                            echo "<i class='bi bi-pencil'></i>";
+                                            echo "</a>";
+                                            if ($row['username'] !== $username_loggato) {
+                                                echo "<a href='cancella_utente.php?id=" . $row['id'] . "' class='btn btn-outline-danger btn-sm' title='Elimina' onclick='return confirm(\"Sei sicuro di voler eliminare questo utente?\")'>";
+                                                echo "<i class='bi bi-trash'></i>";
+                                                echo "</a>";
+                                            }
+                                            echo "</div>";
+                                            echo "</td>";
+                                        }
+                                        echo "</tr>";
+                                    }
+                                    ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <?php else: ?>
+                <!-- Stato vuoto -->
+                <div class="card slide-in">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-people display-1 text-muted mb-3"></i>
+                        <h4 class="text-muted">Nessun utente trovato</h4>
+                        <p class="text-muted">Non ci sono utenti da visualizzare con i tuoi permessi attuali.</p>
+                        <?php if ($livello_utente_loggato < 3): ?>
+                        <a href="registrazione.php" class="btn btn-primary">
+                            <i class="bi bi-person-plus me-2"></i>Registra Primo Utente
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Azioni rapide -->
+                <?php if ($livello_utente_loggato < 3): ?>
+                <div class="row mt-4">
+                    <div class="col-md-4">
+                        <div class="card slide-in">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">
+                                    <i class="bi bi-person-plus text-primary me-2"></i>Nuovo Utente
+                                </h5>
+                                <p class="card-text small text-muted">Registra un nuovo utente nel sistema</p>
+                                <a href="registrazione.php" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-2"></i>Registra
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card slide-in">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">
+                                    <i class="bi bi-person-gear text-warning me-2"></i>Modifica Utente
+                                </h5>
+                                <p class="card-text small text-muted">Aggiorna le informazioni di un utente</p>
+                                <a href="modifica_utente.php" class="btn btn-warning">
+                                    <i class="bi bi-pencil-square me-2"></i>Modifica
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card slide-in">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">
+                                    <i class="bi bi-person-x text-danger me-2"></i>Gestisci Accessi
+                                </h5>
+                                <p class="card-text small text-muted">Gestisci permessi e autorizzazioni</p>
+                                <a href="aggiorna_utente.php" class="btn btn-danger">
+                                    <i class="bi bi-shield-exclamation me-2"></i>Gestisci
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </main>
+
+<?php 
+// Include footer
+include 'template/footer.php';
+?>
 
 
-                    echo "</td>";
-                    echo "</tr>";
-                }
-            }
 
-
-            echo "</tbody>";
-            echo "</table>";
-
-            // Libera il risultato solo se è un mysqli_result da query diretta
-            if ($result instanceof mysqli_result) {
-                $result->free();
-            }
-            // Chiudi lo statement preparato se è stato usato
-            // L'oggetto $result dello statement viene chiuso automaticamente con lo statement
-            // if (isset($stmt) && $stmt instanceof mysqli_stmt) { $stmt->close(); } // Chiuso correttamente dopo l'esecuzione
-
-        } elseif ($result !== false) { // Query ha avuto successo ma non ci sono righe ( $result è 0 o empty)
-            echo "<p class='alert alert-info'>Nessun utente registrato.</p>";
-        } else { // La query non ha avuto successo (l'errore è già gestito sopra e $result è false)
-            // Messaggio di errore query già mostrato sopra
-        }
-
-        // Chiudi lo statement preparato se è stato usato e non è stato chiuso prima
-        if (isset($stmt) && $stmt instanceof mysqli_stmt) {
-            $stmt->close(); // Assicura che lo statement sia chiuso
-        }
-
-
-        $conn->close(); // Chiudi la connessione alla fine
-        ?>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
-</body>
-</html>
