@@ -1,0 +1,13 @@
+# Protezione cartella backup
+Deny from all
+
+# Permetti solo accesso tramite PHP (script autorizzati)
+<FilesMatch "\.(sql|zip|txt)$">
+    Deny from all
+</FilesMatch>
+
+# Blocca listaggio directory
+Options -Indexes
+
+# Prevenzione accesso diretto
+RedirectMatch 404 /backups/

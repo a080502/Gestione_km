@@ -20,7 +20,8 @@
 
             <a href="gestione_target_annuale.php" class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == 'imposta_target.php') echo 'active'; ?>"><i class="bi bi-building-add me-2"></i> Gestione Target Km</a>
             <a href="gestione_costo_extra.php" class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == 'gestione_costo_extra.php') echo 'active'; ?>"><i class="bi bi-building-add me-2"></i> Gestione Costo Sforo Km</a>
-			<a href="gestione_dati_server.php" class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == 'gestione_dati_server.php') echo 'active'; ?>"><i class="bi bi-building-add me-2"></i> Configurazione dati Server</a>
+			<a href="gestione_dati_server.php" class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == 'gestione_dati_server.php') echo 'active'; ?>"><i class="bi bi-gear-fill me-2"></i> Configurazione Sistema</a>
+            <a href="backup_system.php" class="nav-link <?php if (basename($_SERVER['PHP_SELF']) == 'backup_system.php') echo 'active'; ?>"><i class="bi bi-shield-check me-2"></i> Sistema Backup</a>
 
             <hr class="my-2">
             <a href="logout.php" class="nav-link text-danger"><i class="bi bi-box-arrow-right me-2"></i> Logout</a>

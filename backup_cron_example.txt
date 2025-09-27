@@ -1,0 +1,75 @@
+# ===================================================
+# CONFIGURAZIONE CRON PER BACKUP AUTOMATICI
+# ===================================================
+# 
+# Per utilizzare questa configurazione:
+# 1. Copiare le righe desiderate
+# 2. Eseguire 'crontab -e' nel terminale
+# 3. Incollare e modificare i percorsi
+# 4. Salvare e uscire
+#
+# IMPORTANTE: Sostituire /path/to/project con il percorso reale del progetto
+# Esempio: /var/www/html/gestione_km
+#
+# ===================================================
+
+# BACKUP COMPLETO GIORNALIERO
+# Esegue backup completo ogni giorno alle 2:00 di notte
+0 2 * * * cd /path/to/project && php backup_cli.php complete --quiet >> /var/log/backup_gestione_km.log 2>&1
+
+# BACKUP DATABASE OGNI 6 ORE
+# Utile per non perdere dati importanti
+0 */6 * * * cd /path/to/project && php backup_cli.php database --quiet >> /var/log/backup_gestione_km.log 2>&1
+
+# BACKUP FILES SETTIMANALE
+# Ogni domenica alle 3:00
+0 3 * * 0 cd /path/to/project && php backup_cli.php files --quiet >> /var/log/backup_gestione_km.log 2>&1
+
+# PULIZIA BACKUP VECCHI
+# Rimuove backup più vecchi di 30 giorni ogni settimana
+0 4 * * 0 find /path/to/project/backups -name "*.zip" -mtime +30 -delete
+0 4 * * 0 find /path/to/project/backups -name "*.sql" -mtime +30 -delete
+
+# ===================================================
+# CONFIGURAZIONI ALTERNATIVE
+# ===================================================
+
+# BACKUP INTENSIVO (per ambienti critici)
+# Backup database ogni 2 ore + completo giornaliero
+# 0 */2 * * * cd /path/to/project && php backup_cli.php database --quiet >> /var/log/backup_gestione_km.log 2>&1
+# 0 1 * * * cd /path/to/project && php backup_cli.php complete --quiet >> /var/log/backup_gestione_km.log 2>&1
+
+# BACKUP SETTIMANALE (per ambienti di test)
+# Solo backup completo ogni domenica
+# 0 2 * * 0 cd /path/to/project && php backup_cli.php complete --quiet >> /var/log/backup_gestione_km.log 2>&1
+
+# ===================================================
+# MONITORAGGIO E NOTIFICHE
+# ===================================================
+
+# Esempio con notifica email in caso di errore
+# 0 2 * * * cd /path/to/project && php backup_cli.php complete --quiet || echo "Backup fallito $(date)" | mail -s "Errore Backup Gestione KM" admin@example.com
+
+# Esempio con rotazione log
+# 0 0 1 * * [ -f /var/log/backup_gestione_km.log ] && mv /var/log/backup_gestione_km.log /var/log/backup_gestione_km.log.old
+
+# ===================================================
+# COMANDI UTILI
+# ===================================================
+#
+# Verificare status cron:
+# sudo service cron status
+#
+# Riavviare cron dopo modifiche:
+# sudo service cron restart
+#
+# Verificare log cron:
+# tail -f /var/log/cron.log
+#
+# Verificare log backup:
+# tail -f /var/log/backup_gestione_km.log
+#
+# Test manuale backup:
+# cd /path/to/project && php backup_cli.php complete
+#
+# ===================================================
