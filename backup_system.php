@@ -13,6 +13,48 @@ if (file_exists('editable_config.php')) {
     $config = include 'editable_config.php';
 }
 
+// Funzione per testare la connessione al database
+function testDatabaseConnection($config) {
+    // Verifica che i driver PDO necessari siano disponibili
+    if (!extension_loaded('pdo')) {
+        return ['success' => false, 'error' => 'Estensione PDO non disponibile'];
+    }
+    
+    if (!extension_loaded('pdo_mysql')) {
+        return ['success' => false, 'error' => 'Driver PDO MySQL non disponibile. Installare con: sudo apt install php-mysql'];
+    }
+    
+    try {
+        $dsn = "mysql:host={$config['DB_HOST']};charset=utf8mb4";
+        if (!empty($config['DB_NAME'])) {
+            $dsn .= ";dbname={$config['DB_NAME']}";
+        }
+        
+        $pdo = new PDO(
+            $dsn,
+            $config['DB_USERNAME'],
+            $config['DB_PASSWORD'],
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_TIMEOUT => 5 // Timeout 5 secondi
+            ]
+        );
+        
+        // Test semplice query
+        $stmt = $pdo->query('SELECT VERSION() as version');
+        $result = $stmt->fetch();
+        
+        return [
+            'success' => true, 
+            'message' => 'Connessione MySQL riuscita', 
+            'version' => $result['version']
+        ];
+        
+    } catch (PDOException $e) {
+        return ['success' => false, 'error' => 'Connessione database fallita: ' . $e->getMessage()];
+    }
+}
+
 // Funzione per ottenere dimensione leggibile
 function formatBytes($size, $precision = 2) {
     $base = log($size, 1024);
@@ -52,12 +94,30 @@ function createDatabaseBackup($config) {
 
 // Backup database alternativo con PHP
 function createDatabaseBackupPHP($config, $filepath) {
+    // Verifica che i driver PDO necessari siano disponibili
+    if (!extension_loaded('pdo')) {
+        return ['success' => false, 'error' => 'Estensione PDO non disponibile'];
+    }
+    
+    if (!extension_loaded('pdo_mysql')) {
+        return ['success' => false, 'error' => 'Driver PDO MySQL non disponibile'];
+    }
+    
     try {
+        $dsn = "mysql:host={$config['DB_HOST']};charset=utf8mb4";
+        if (!empty($config['DB_NAME'])) {
+            $dsn .= ";dbname={$config['DB_NAME']}";
+        }
+        
         $pdo = new PDO(
-            "mysql:host={$config['DB_HOST']};dbname={$config['DB_NAME']};charset=utf8mb4",
+            $dsn,
             $config['DB_USERNAME'],
             $config['DB_PASSWORD'],
-            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
+            ]
         );
         
         $sql = "-- Database Backup Generated on " . date('Y-m-d H:i:s') . "\n";
@@ -403,6 +463,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 echo json_encode($result);
                 break;
             
+            case 'test_database_connection':
+                $result = testDatabaseConnection($config);
+                echo json_encode($result);
+                break;
+            
         case 'list_backups':
             $backups = [];
             $backupTypes = ['database', 'files', 'complete'];
@@ -582,6 +647,55 @@ if (isset($_GET['download']) && !empty($_GET['download'])) {
             </div>
             
             <div class="container-fluid p-4">
+                <!-- Pannello Diagnostica Sistema -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h3><i class="bi bi-gear-fill"></i> Stato Sistema</h3>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card border-info">
+                                    <div class="card-body text-center">
+                                        <h6>Database</h6>
+                                        <div id="db-status">
+                                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                                            <small>Test connessione...</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-info">
+                                    <div class="card-body text-center">
+                                        <h6>Archiviazione</h6>
+                                        <?php if (class_exists('ZipArchive')): ?>
+                                            <i class="bi bi-check-circle text-success fs-4"></i><br>
+                                            <small>ZIP supportato</small>
+                                        <?php else: ?>
+                                            <i class="bi bi-exclamation-triangle text-warning fs-4"></i><br>
+                                            <small>Fallback TAR.GZ</small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-info">
+                                    <div class="card-body text-center">
+                                        <h6>Permessi</h6>
+                                        <?php if (is_writable('backups/')): ?>
+                                            <i class="bi bi-check-circle text-success fs-4"></i><br>
+                                            <small>Scrittura OK</small>
+                                        <?php else: ?>
+                                            <i class="bi bi-x-circle text-danger fs-4"></i><br>
+                                            <small>Errore scrittura</small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <hr>
+                    </div>
+                </div>
+
                 <!-- Sezione Creazione Backup -->
                 <div class="row mb-4">
                     <div class="col-12">
@@ -934,8 +1048,44 @@ if (isset($_GET['download']) && !empty($_GET['download'])) {
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
         
+        // Test connessione database
+        function testDatabaseConnection() {
+            const statusDiv = document.getElementById('db-status');
+            
+            const formData = new FormData();
+            formData.append('action', 'test_database_connection');
+            
+            fetch('backup_system.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusDiv.innerHTML = `
+                        <i class="bi bi-check-circle text-success fs-4"></i><br>
+                        <small>MySQL ${data.version || 'OK'}</small>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <i class="bi bi-x-circle text-danger fs-4"></i><br>
+                        <small>Errore DB</small>
+                    `;
+                    console.error('Errore database:', data.error);
+                }
+            })
+            .catch(error => {
+                statusDiv.innerHTML = `
+                    <i class="bi bi-exclamation-triangle text-warning fs-4"></i><br>
+                    <small>Test fallito</small>
+                `;
+                console.error('Errore test DB:', error);
+            });
+        }
+
         // Carica lista backup all'avvio
         document.addEventListener('DOMContentLoaded', function() {
+            testDatabaseConnection();
             loadBackupList();
         });
     </script>
