@@ -25,7 +25,17 @@ $divisione = $utente_data['divisione'];
 
 // --- Logica per i filtri Anno/Mese ---
 $anno_selezionato = isset($_GET['anno_selezionato']) ? $_GET['anno_selezionato'] : date('Y');
-$mese_selezionato = isset($_GET['mese_selezionato']) ? $_GET['mese_selezionato'] : date('m');
+
+// Gestione compatibilità per entrambi i formati del parametro mese
+$mese_selezionato = '';
+if (isset($_GET['mese_selezionato'])) {
+    $mese_selezionato = $_GET['mese_selezionato'];
+} elseif (isset($_GET['Mese_selezionato'])) {
+    // Compatibilità per il vecchio formato
+    $mese_selezionato = $_GET['Mese_selezionato'];
+} else {
+    $mese_selezionato = date('m');
+}
 
 // --- Costruzione dinamica della clausola WHERE e dei parametri ---
 $where_clauses = [];
