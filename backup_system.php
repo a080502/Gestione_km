@@ -211,10 +211,47 @@ function backupComplete($config) {
     $readme .= "3. Importare SQL da database/\n";
     file_put_contents($tempDir . '/README.txt', $readme);
     
+    // Funzione ricorsiva per copiare directory
+    function copyRecursive($source, $dest, $excludeItems = []) {
+        $errors = [];
+        
+        if (is_dir($source)) {
+            if (!is_dir($dest)) {
+                if (!mkdir($dest, 0755, true)) {
+                    return ["Impossibile creare directory: $dest"];
+                }
+            }
+            
+            $files = scandir($source);
+            foreach ($files as $file) {
+                if ($file != '.' && $file != '..') {
+                    $srcFile = $source . '/' . $file;
+                    $destFile = $dest . '/' . $file;
+                    
+                    // Salta elementi da escludere
+                    if (in_array($file, $excludeItems)) {
+                        continue;
+                    }
+                    
+                    if (is_dir($srcFile)) {
+                        $subErrors = copyRecursive($srcFile, $destFile, $excludeItems);
+                        $errors = array_merge($errors, $subErrors);
+                    } else {
+                        if (!copy($srcFile, $destFile)) {
+                            $errors[] = "Impossibile copiare: $srcFile";
+                        }
+                    }
+                }
+            }
+        }
+        
+        return $errors;
+    }
+    
     // Lista di elementi da escludere
     $excludeItems = ['backups', $tempDir, '.git', 'tmp', '.gitignore'];
     
-    // Copia files del progetto (metodo più affidabile)
+    // Copia files del progetto usando PHP puro
     $items = array_diff(scandir('.'), ['.', '..']);
     $copyErrors = [];
     
@@ -228,15 +265,9 @@ function backupComplete($config) {
         $destPath = $tempDir . '/website/' . $item;
         
         if (is_dir($sourcePath)) {
-            // Copia directory ricorsivamente
-            $command = "cp -r " . escapeshellarg($sourcePath) . " " . escapeshellarg($destPath) . " 2>&1";
-            $output = [];
-            $return_var = 0;
-            exec($command, $output, $return_var);
-            
-            if ($return_var !== 0) {
-                $copyErrors[] = "Directory $item: " . implode(' ', $output);
-            }
+            // Copia directory ricorsivamente con PHP
+            $dirErrors = copyRecursive($sourcePath, $destPath, $excludeItems);
+            $copyErrors = array_merge($copyErrors, $dirErrors);
         } else {
             // Copia file singolo
             if (!copy($sourcePath, $destPath)) {
@@ -320,42 +351,77 @@ function listBackups() {
 
 // Gestione richieste AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    // Aumenta il tempo limite per operazioni lunghe
+    set_time_limit(300); // 5 minuti
     header('Content-Type: application/json');
     
-    switch ($_POST['action']) {
-        case 'backup_database':
-            $result = backupDatabase($config);
-            echo json_encode($result);
-            exit;
-            
-        case 'backup_files':
-            $result = backupFiles();
-            echo json_encode($result);
-            exit;
-            
-        case 'backup_complete':
-            $result = backupComplete($config);
-            echo json_encode($result);
-            exit;
-            
-        case 'list_backups':
-            $backups = listBackups();
-            echo json_encode(['success' => true, 'backups' => $backups]);
-            exit;
-            
-        case 'delete_backup':
-            $file = $_POST['file'] ?? '';
-            if ($file && file_exists($file) && strpos(realpath($file), realpath('backups/')) === 0) {
-                if (unlink($file)) {
-                    echo json_encode(['success' => true]);
+    // Abilita output buffering per catturare eventuali errori
+    ob_start();
+    
+    try {
+        switch ($_POST['action']) {
+            case 'backup_database':
+                $result = backupDatabase($config);
+                echo json_encode($result);
+                break;
+                
+            case 'backup_files':
+                $result = backupFiles();
+                echo json_encode($result);
+                break;
+                
+            case 'backup_complete':
+                $result = backupComplete($config);
+                // Semplifica il risultato per evitare problemi JSON
+                if ($result['success']) {
+                    $response = [
+                        'success' => true,
+                        'file' => $result['file'],
+                        'size' => $result['size'],
+                        'files_copied' => $result['files_copied'] ?? 0
+                    ];
+                    // Log errori separatamente se ci sono
+                    if (!empty($result['copy_errors'])) {
+                        error_log("Backup completo - errori copia: " . implode('; ', $result['copy_errors']));
+                    }
                 } else {
-                    echo json_encode(['success' => false, 'error' => 'Impossibile eliminare il file']);
+                    $response = [
+                        'success' => false,
+                        'error' => $result['error']
+                    ];
                 }
-            } else {
-                echo json_encode(['success' => false, 'error' => 'File non valido']);
-            }
-            exit;
+                echo json_encode($response);
+                break;
+                
+            case 'list_backups':
+                $backups = listBackups();
+                echo json_encode(['success' => true, 'backups' => $backups]);
+                break;
+                
+            case 'delete_backup':
+                $file = $_POST['file'] ?? '';
+                if ($file && file_exists($file) && strpos(realpath($file), realpath('backups/')) === 0) {
+                    if (unlink($file)) {
+                        echo json_encode(['success' => true]);
+                    } else {
+                        echo json_encode(['success' => false, 'error' => 'Impossibile eliminare il file']);
+                    }
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'File non valido']);
+                }
+                break;
+                
+            default:
+                echo json_encode(['success' => false, 'error' => 'Azione non riconosciuta']);
+                break;
+        }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => 'Errore interno: ' . $e->getMessage()]);
     }
+    
+    // Pulisci output buffer e termina
+    ob_end_clean();
+    exit;
 }
 
 // Gestione download
@@ -586,30 +652,51 @@ if (class_exists('mysqli')) {
             button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creazione...';
             result.style.display = 'none';
             
-            // Richiesta AJAX
+            // Richiesta AJAX con timeout più lungo
             fetch('backup_system.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: 'action=backup_' + type
+                body: 'action=backup_' + type,
+                timeout: 300000 // 5 minuti
             })
-            .then(response => response.text())
+            .then(response => {
+                console.log('Status response:', response.status);
+                return response.text();
+            })
             .then(text => {
-                console.log('Risposta server:', text);
+                console.log('Risposta server completa:', text);
+                console.log('Lunghezza risposta:', text.length);
+                
+                // Verifica se la risposta inizia con caratteri non-JSON
+                const trimmedText = text.trim();
+                if (!trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
+                    throw new Error('Risposta non è JSON valido. Contenuto: ' + trimmedText.substring(0, 200));
+                }
+                
                 try {
-                    const data = JSON.parse(text);
+                    const data = JSON.parse(trimmedText);
                     
                     if (data.success) {
-                        result.innerHTML = `
+                        let successMsg = `
                             <div class="alert alert-success">
                                 <i class="bi bi-check-circle"></i> Backup creato!<br>
-                                <small>Dimensione: ${formatBytes(data.size)}</small><br>
+                                <small>Dimensione: ${formatBytes(data.size)}</small>
+                        `;
+                        
+                        if (data.files_copied) {
+                            successMsg += `<br><small>File copiati: ${data.files_copied}</small>`;
+                        }
+                        
+                        successMsg += `<br>
                                 <a href="?download=${encodeURIComponent(data.file)}" class="btn btn-success btn-sm mt-2">
                                     <i class="bi bi-download"></i> Scarica
                                 </a>
                             </div>
                         `;
+                        
+                        result.innerHTML = successMsg;
                         loadBackupList();
                     } else {
                         result.innerHTML = `
@@ -620,15 +707,21 @@ if (class_exists('mysqli')) {
                         `;
                     }
                     
-                } catch (e) {
-                    console.error('Errore parsing JSON:', e);
+                } catch (parseError) {
+                    console.error('Errore parsing JSON:', parseError);
+                    console.error('Testo originale:', text);
                     result.innerHTML = `
                         <div class="alert alert-danger">
-                            <i class="bi bi-x-circle"></i> Errore di comunicazione<br>
-                            <small>Risposta non valida dal server</small>
+                            <i class="bi bi-x-circle"></i> Errore parsing risposta<br>
+                            <small>La risposta del server non è JSON valido</small>
+                            <details class="mt-2">
+                                <summary>Debug Info</summary>
+                                <pre style="font-size:10px; max-height:100px; overflow-y:auto;">${text.substring(0, 500)}</pre>
+                            </details>
                         </div>
                     `;
                 }
+                
             })
             .catch(error => {
                 console.error('Errore fetch:', error);
