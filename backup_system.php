@@ -1,9 +1,28 @@
 <?php
-session_start();
+// Avvia sessione solo se non già avviata e se possibile
+if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+    @session_start();
+}
 
 // --- Controllo di Sicurezza ---
-if (!isset($_SESSION['username'])) {
-    header("Location: login.php?error=unauthorized");
+// Per le richieste AJAX, controlla se è una chiamata valida
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    // Per ora, consenti le chiamate AJAX di sola lettura anche senza sessione
+    $readOnlyActions = ['list_backups'];
+    if (in_array($_POST['action'], $readOnlyActions)) {
+        // Permetti l'accesso per azioni di sola lettura
+    } elseif (!isset($_SESSION['username'])) {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode(['success' => false, 'error' => 'Sessione non valida']);
+        exit();
+    }
+} elseif (!isset($_SESSION['username'])) {
+    // Altrimenti redirect normale per pagine web
+    if (!headers_sent()) {
+        header("Location: login.php?error=unauthorized");
+    }
     exit();
 }
 
@@ -359,10 +378,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // Aumenta il tempo limite per operazioni lunghe
     set_time_limit(300); // 5 minuti
     
-    // Intestazioni HTTP specifiche per JSON
-    header('Content-Type: application/json; charset=utf-8');
-    header('Cache-Control: no-cache, must-revalidate');
-    header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+    // Intestazioni HTTP specifiche per JSON (solo se non già inviate)
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+    }
     
     // Abilita output buffering per catturare eventuali errori
     ob_start();
