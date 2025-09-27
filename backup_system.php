@@ -472,7 +472,7 @@ if (class_exists('mysqli')) {
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="card backup-card">
                             <div class="card-body text-center">
                                 <i class="bi bi-folder text-primary fs-1 mb-3"></i>
@@ -485,6 +485,8 @@ if (class_exists('mysqli')) {
                             </div>
                         </div>
                     </div>
+                    <!-- Backup Completo disabilitato -->
+                    <!--
                     <div class="col-md-4">
                         <div class="card backup-card">
                             <div class="card-body text-center">
@@ -498,6 +500,7 @@ if (class_exists('mysqli')) {
                             </div>
                         </div>
                     </div>
+                    -->
                 </div>
                 
                 <!-- Lista Backup -->
@@ -596,13 +599,11 @@ if (class_exists('mysqli')) {
                 // Reset pulsante
                 const icons = {
                     'database': 'bi-download',
-                    'files': 'bi-file-zip', 
-                    'complete': 'bi-collection'
+                    'files': 'bi-file-zip'
                 };
                 const labels = {
                     'database': 'Backup DB',
-                    'files': 'Backup Files',
-                    'complete': 'Backup Totale'
+                    'files': 'Backup Files'
                 };
                 
                 button.disabled = false;
