@@ -107,8 +107,44 @@ function createDatabaseBackupPHP($config, $filepath) {
     }
 }
 
+// Funzione per creare backup files (fallback con tar)
+function createFilesBackupTar() {
+    $backupDir = 'backups/files/';
+    if (!is_dir($backupDir)) {
+        mkdir($backupDir, 0755, true);
+    }
+    
+    $filename = 'files_backup_' . date('Y-m-d_H-i-s') . '.tar.gz';
+    $filepath = $backupDir . $filename;
+    
+    // Lista delle cartelle da escludere
+    $excludeDirs = ['backups', 'vendor/tecnickcom', 'node_modules', '.git', 'tmp'];
+    $excludeOptions = '';
+    foreach ($excludeDirs as $dir) {
+        $excludeOptions .= " --exclude='$dir'";
+    }
+    
+    // Comando tar per creare archivio compresso
+    $command = "tar -czf " . escapeshellarg($filepath) . $excludeOptions . " --exclude='*.log' . 2>&1";
+    
+    $output = [];
+    $return_var = 0;
+    exec($command, $output, $return_var);
+    
+    if ($return_var === 0 && file_exists($filepath) && filesize($filepath) > 0) {
+        return ['success' => true, 'file' => $filepath, 'size' => filesize($filepath)];
+    } else {
+        return ['success' => false, 'error' => 'Errore durante la creazione del backup files: ' . implode(' ', $output)];
+    }
+}
+
 // Funzione per creare backup files
 function createFilesBackup() {
+    // Verifica se ZipArchive è disponibile
+    if (!class_exists('ZipArchive')) {
+        return createFilesBackupTar();
+    }
+    
     $backupDir = 'backups/files/';
     if (!is_dir($backupDir)) {
         mkdir($backupDir, 0755, true);
@@ -164,8 +200,94 @@ function createFilesBackup() {
     }
 }
 
+// Funzione per creare backup completo (fallback con tar)
+function createCompleteBackupTar($config) {
+    $backupDir = 'backups/complete/';
+    if (!is_dir($backupDir)) {
+        mkdir($backupDir, 0755, true);
+    }
+    
+    $timestamp = date('Y-m-d_H-i-s');
+    $filename = 'complete_backup_' . $timestamp . '.tar.gz';
+    $filepath = $backupDir . $filename;
+    
+    // Crea backup database
+    $dbBackup = createDatabaseBackup($config);
+    if (!$dbBackup['success']) {
+        return ['success' => false, 'error' => 'Errore backup database: ' . ($dbBackup['error'] ?? 'Errore sconosciuto')];
+    }
+    
+    // Crea cartella temporanea per organizzare i file
+    $tempDir = 'tmp_backup_' . $timestamp;
+    mkdir($tempDir, 0755, true);
+    mkdir($tempDir . '/database', 0755, true);
+    mkdir($tempDir . '/website', 0755, true);
+    
+    // Copia backup database nella cartella temp
+    copy($dbBackup['file'], $tempDir . '/database/' . basename($dbBackup['file']));
+    
+    // Crea file README per il backup
+    $backupInfo = "=== BACKUP COMPLETO GESTIONE KM ===\n";
+    $backupInfo .= "Data creazione: " . date('Y-m-d H:i:s') . "\n";
+    $backupInfo .= "Utente: " . $_SESSION['username'] . "\n";
+    $backupInfo .= "Database: " . $config['DB_NAME'] . "\n";
+    $backupInfo .= "Host: " . $config['DB_HOST'] . "\n";
+    $backupInfo .= "\nContenuto:\n";
+    $backupInfo .= "- Database completo (SQL)\n";
+    $backupInfo .= "- Tutti i file del sito web\n";
+    $backupInfo .= "- Configurazioni e immagini\n";
+    $backupInfo .= "\nPer ripristinare:\n";
+    $backupInfo .= "1. Estrarre il contenuto di questo archivio\n";
+    $backupInfo .= "2. Caricare i file dalla cartella 'website/'\n";
+    $backupInfo .= "3. Importare il file SQL dalla cartella 'database/'\n";
+    
+    file_put_contents($tempDir . '/README_BACKUP.txt', $backupInfo);
+    
+    // Lista delle cartelle da escludere
+    $excludeDirs = ['backups', 'vendor/tecnickcom', 'node_modules', '.git', 'tmp', $tempDir];
+    $excludeOptions = '';
+    foreach ($excludeDirs as $dir) {
+        $excludeOptions .= " --exclude='$dir'";
+    }
+    
+    // Copia tutti i file del sito nella cartella website del temp
+    $command = "cp -r . " . escapeshellarg($tempDir . '/website/') . " 2>/dev/null";
+    exec($command);
+    
+    // Rimuovi cartelle escluse dalla copia
+    foreach ($excludeDirs as $dir) {
+        if (is_dir($tempDir . '/website/' . $dir)) {
+            exec("rm -rf " . escapeshellarg($tempDir . '/website/' . $dir));
+        }
+    }
+    
+    // Crea archivio tar compresso
+    $command = "tar -czf " . escapeshellarg($filepath) . " -C " . escapeshellarg($tempDir) . " . 2>&1";
+    
+    $output = [];
+    $return_var = 0;
+    exec($command, $output, $return_var);
+    
+    // Pulizia: rimuovi cartella temporanea e backup database temporaneo
+    exec("rm -rf " . escapeshellarg($tempDir));
+    if (file_exists($dbBackup['file'])) {
+        unlink($dbBackup['file']);
+    }
+    
+    if ($return_var === 0 && file_exists($filepath) && filesize($filepath) > 0) {
+        return ['success' => true, 'file' => $filepath, 'size' => filesize($filepath)];
+    } else {
+        return ['success' => false, 'error' => 'Errore durante la creazione del backup completo: ' . implode(' ', $output)];
+    }
+}
+
 // Funzione per creare backup completo
 function createCompleteBackup($config) {
+    // Verifica se ZipArchive è disponibile
+    if (!class_exists('ZipArchive')) {
+        return createCompleteBackupTar($config);
+    }
+    
     $backupDir = 'backups/complete/';
     if (!is_dir($backupDir)) {
         mkdir($backupDir, 0755, true);
@@ -255,23 +377,31 @@ function createCompleteBackup($config) {
 
 // Gestione richieste AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    // Abilita error reporting per debugging ma non mostrare errori HTML
+    error_reporting(E_ALL);
+    ini_set('display_errors', 0);
+    
+    // Buffer output per catturare eventuali warning/notice
+    ob_start();
+    
     header('Content-Type: application/json');
     
-    switch ($_POST['action']) {
-        case 'backup_database':
-            $result = createDatabaseBackup($config);
-            echo json_encode($result);
-            break;
-            
-        case 'backup_files':
-            $result = createFilesBackup();
-            echo json_encode($result);
-            break;
-            
-        case 'backup_complete':
-            $result = createCompleteBackup($config);
-            echo json_encode($result);
-            break;
+    try {
+        switch ($_POST['action']) {
+            case 'backup_database':
+                $result = createDatabaseBackup($config);
+                echo json_encode($result);
+                break;
+                
+            case 'backup_files':
+                $result = createFilesBackup();
+                echo json_encode($result);
+                break;
+                
+            case 'backup_complete':
+                $result = createCompleteBackup($config);
+                echo json_encode($result);
+                break;
             
         case 'list_backups':
             $backups = [];
@@ -314,6 +444,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
             break;
     }
+    
+    } catch (Exception $e) {
+        // Pulisci l'output buffer in caso di errore
+        ob_clean();
+        echo json_encode([
+            'success' => false, 
+            'error' => 'Errore durante l\'operazione: ' . $e->getMessage()
+        ]);
+    } finally {
+        // Pulisci sempre l'output buffer
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+    }
+    
     exit();
 }
 
@@ -441,6 +586,12 @@ if (isset($_GET['download']) && !empty($_GET['download'])) {
                 <div class="row mb-4">
                     <div class="col-12">
                         <h3><i class="bi bi-plus-circle"></i> Crea Nuovo Backup</h3>
+                        <?php if (!class_exists('ZipArchive')): ?>
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> <strong>Nota:</strong> 
+                            L'estensione PHP ZipArchive non è disponibile. I backup verranno creati in formato TAR.GZ invece che ZIP.
+                        </div>
+                        <?php endif; ?>
                         <hr>
                     </div>
                 </div>
