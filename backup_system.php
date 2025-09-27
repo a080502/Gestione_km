@@ -351,9 +351,18 @@ function listBackups() {
 
 // Gestione richieste AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    // Pulisci qualsiasi output precedente
+    if (ob_get_level()) {
+        ob_end_clean();
+    }
+    
     // Aumenta il tempo limite per operazioni lunghe
     set_time_limit(300); // 5 minuti
-    header('Content-Type: application/json');
+    
+    // Intestazioni HTTP specifiche per JSON
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-cache, must-revalidate');
+    header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
     
     // Abilita output buffering per catturare eventuali errori
     ob_start();
@@ -394,8 +403,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 break;
                 
             case 'list_backups':
-                $backups = listBackups();
-                echo json_encode(['success' => true, 'backups' => $backups]);
+                try {
+                    $backups = listBackups();
+                    echo json_encode(['success' => true, 'backups' => $backups]);
+                } catch (Exception $e) {
+                    echo json_encode(['success' => false, 'error' => 'Errore caricamento lista: ' . $e->getMessage()]);
+                }
                 break;
                 
             case 'delete_backup':
@@ -762,9 +775,26 @@ if (class_exists('mysqli')) {
                 },
                 body: 'action=list_backups'
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.backups.length > 0) {
+            .then(response => {
+                console.log('Lista backup - Status:', response.status);
+                return response.text();
+            })
+            .then(text => {
+                console.log('Lista backup - Risposta:', text);
+                console.log('Lista backup - Lunghezza:', text.length);
+                
+                if (!text.trim()) {
+                    throw new Error('Risposta vuota dal server');
+                }
+                
+                const trimmedText = text.trim();
+                if (!trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
+                    throw new Error('Risposta non JSON: ' + trimmedText.substring(0, 100));
+                }
+                
+                const data = JSON.parse(trimmedText);
+                
+                if (data.success && data.backups && data.backups.length > 0) {
                     let html = '';
                     data.backups.forEach(backup => {
                         const badgeClass = `badge-${backup.type}`;
@@ -792,7 +822,7 @@ if (class_exists('mysqli')) {
                         `;
                     });
                     listContainer.innerHTML = html;
-                } else {
+                } else if (data.success && data.backups && data.backups.length === 0) {
                     listContainer.innerHTML = `
                         <div class="text-center py-4">
                             <i class="bi bi-inbox display-1 text-muted"></i>
@@ -800,12 +830,25 @@ if (class_exists('mysqli')) {
                             <p>Crea il tuo primo backup usando i pulsanti sopra.</p>
                         </div>
                     `;
+                } else {
+                    // Errore dal server
+                    listContainer.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> Errore server: ${data.error || 'Errore sconosciuto'}
+                        </div>
+                    `;
                 }
             })
             .catch(error => {
+                console.error('Errore caricamento lista:', error);
                 listContainer.innerHTML = `
                     <div class="alert alert-danger">
-                        Errore nel caricamento: ${error.message}
+                        <i class="bi bi-x-circle"></i> Errore nel caricamento<br>
+                        <small>${error.message}</small>
+                        <details class="mt-2">
+                            <summary>Debug Info</summary>
+                            <pre style="font-size:10px;">${error.stack || 'Nessun stack trace'}</pre>
+                        </details>
                     </div>
                 `;
             });
