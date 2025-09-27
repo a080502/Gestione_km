@@ -38,8 +38,14 @@
 
     <!-- Cleanup -->
     <?php
-    if (isset($conn) && $conn instanceof mysqli && @$conn->ping()) {
-        $conn->close();
+    if (isset($conn) && $conn instanceof mysqli && isset($conn->thread_id)) {
+        try {
+            if ($conn->ping()) {
+                $conn->close();
+            }
+        } catch (Error $e) {
+            // Connessione già chiusa, ignora l'errore
+        }
     }
     ?>
 </body>
