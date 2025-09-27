@@ -193,27 +193,27 @@ if ($sql_anni) {
                         </select>
                   </div>
                   <div class="col-md-3 col-sm-6">
-                        <select name="Mese_selezionato" class="form-select">
-                              <option value="tutti" <?php if ($Mese_selezionato == 'tutti') echo 'selected'; ?>>Tutti i mesi</option>
-                              <option value="01" <?php if ($Mese_selezionato == '01') echo 'selected'; ?>>01 - Gennaio</option>
-                              <option value="02" <?php if ($Mese_selezionato == '02') echo 'selected'; ?>>02 - Febbraio</option>
-                              <option value="03" <?php if ($Mese_selezionato == '03') echo 'selected'; ?>>03 - Marzo</option>
-                              <option value="04" <?php if ($Mese_selezionato == '04') echo 'selected'; ?>>04 - Aprile</option>
-                              <option value="05" <?php if ($Mese_selezionato == '05') echo 'selected'; ?>>05 - Maggio</option>
-                              <option value="06" <?php if ($Mese_selezionato == '06') echo 'selected'; ?>>06 - Giugno</option>
-                              <option value="07" <?php if ($Mese_selezionato == '07') echo 'selected'; ?>>07 - Luglio</option>
-                              <option value="08" <?php if ($Mese_selezionato == '08') echo 'selected'; ?>>08 - Agosto</option>
-                              <option value="09" <?php if ($Mese_selezionato == '09') echo 'selected'; ?>>09 - Settembre</option>
-                              <option value="10" <?php if ($Mese_selezionato == '10') echo 'selected'; ?>>10 - Ottobre</option>
-                              <option value="11" <?php if ($Mese_selezionato == '11') echo 'selected'; ?>>11 - Novembre</option>
-                              <option value="12" <?php if ($Mese_selezionato == '12') echo 'selected'; ?>>12 - Dicembre</option>
+                        <select name="mese_selezionato" class="form-select">
+                              <option value="tutti" <?php if ($mese_selezionato == 'tutti') echo 'selected'; ?>>Tutti i mesi</option>
+                              <option value="01" <?php if ($mese_selezionato == '01') echo 'selected'; ?>>01 - Gennaio</option>
+                              <option value="02" <?php if ($mese_selezionato == '02') echo 'selected'; ?>>02 - Febbraio</option>
+                              <option value="03" <?php if ($mese_selezionato == '03') echo 'selected'; ?>>03 - Marzo</option>
+                              <option value="04" <?php if ($mese_selezionato == '04') echo 'selected'; ?>>04 - Aprile</option>
+                              <option value="05" <?php if ($mese_selezionato == '05') echo 'selected'; ?>>05 - Maggio</option>
+                              <option value="06" <?php if ($mese_selezionato == '06') echo 'selected'; ?>>06 - Giugno</option>
+                              <option value="07" <?php if ($mese_selezionato == '07') echo 'selected'; ?>>07 - Luglio</option>
+                              <option value="08" <?php if ($mese_selezionato == '08') echo 'selected'; ?>>08 - Agosto</option>
+                              <option value="09" <?php if ($mese_selezionato == '09') echo 'selected'; ?>>09 - Settembre</option>
+                              <option value="10" <?php if ($mese_selezionato == '10') echo 'selected'; ?>>10 - Ottobre</option>
+                              <option value="11" <?php if ($mese_selezionato == '11') echo 'selected'; ?>>11 - Novembre</option>
+                              <option value="12" <?php if ($mese_selezionato == '12') echo 'selected'; ?>>12 - Dicembre</option>
                         </select>
                   </div>
                   <div class="col-md-3 col-sm-auto"> <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter me-2"></i> Filtra</button>
                   </div>
             </form>
 
-            <div class="table-responsive shadow-sm"> <table class="table table-sm table-striped table-bordered table-hover caption-top" id="reportTable"> <caption><?php echo "Dati filtrati per Anno: <strong>" . htmlspecialchars($anno_selezionato) . "</strong>, Mese: <strong>" . htmlspecialchars($Mese_selezionato == 'tutti' ? 'Tutti' : $Mese_selezionato) . "</strong>"; ?></caption>
+            <div class="table-responsive shadow-sm"> <table class="table table-sm table-striped table-bordered table-hover caption-top" id="reportTable"> <caption><?php echo "Dati filtrati per Anno: <strong>" . htmlspecialchars($anno_selezionato ?? 'N/A') . "</strong>, Mese: <strong>" . htmlspecialchars($mese_selezionato == 'tutti' ? 'Tutti' : ($mese_selezionato ?? 'N/A')) . "</strong>"; ?></caption>
                         <thead class="table-light">
                               <tr>
                                     <th><input type="checkbox" id="selectAllCheckboxes"> Seleziona</th>                                     <th>Mese</th>
