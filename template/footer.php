@@ -38,7 +38,7 @@
 
     <!-- Cleanup -->
     <?php
-    if (isset($conn) && $conn instanceof mysqli) {
+    if (isset($conn) && $conn instanceof mysqli && @$conn->ping()) {
         $conn->close();
     }
     ?>
