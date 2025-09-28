@@ -1,0 +1,159 @@
+/* CSS aggiuntivo per Report Avanzato Antifrode */
+
+/* Miglioramenti per le carte statistiche */
+.card .display-4 {
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.card:hover .display-4 {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Stili per tabelle anomalie */
+.table-danger td {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+    border-color: rgba(220, 53, 69, 0.2) !important;
+}
+
+.table-warning td {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+    border-color: rgba(255, 193, 7, 0.2) !important;
+}
+
+/* Badge personalizzati */
+.badge.bg-secondary {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Animazioni per grafici */
+canvas {
+    border-radius: 8px;
+}
+
+/* Stili per filtri */
+.card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 2px solid #dee2e6;
+}
+
+.card-header.bg-danger,
+.card-header.bg-success,
+.card-header.bg-warning {
+    color: white !important;
+    font-weight: 600;
+}
+
+/* Responsive per mobile */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.4rem;
+        font-size: 0.75rem;
+    }
+    
+    .display-4 {
+        font-size: 2rem !important;
+    }
+}
+
+/* Hover effects per le righe della tabella */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05) !important;
+    transition: background-color 0.3s ease;
+}
+
+/* Stili per i pulsanti di azione */
+.btn-outline-primary:hover,
+.btn-outline-warning:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+/* Indicatori di performance */
+.text-success {
+    color: #198754 !important;
+    font-weight: 600;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+    font-weight: 600;
+}
+
+.text-warning {
+    color: #fd7e14 !important;
+    font-weight: 600;
+}
+
+/* Card con bordi colorati */
+.border-danger {
+    border-color: #dc3545 !important;
+    border-width: 2px !important;
+}
+
+/* Loading state per grafici */
+.chart-loading {
+    position: relative;
+}
+
+.chart-loading::after {
+    content: 'Caricamento grafico...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Stili per la stampa */
+@media print {
+    .btn, .card-footer {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #000 !important;
+        margin-bottom: 1rem;
+    }
+    
+    .table {
+        font-size: 0.8rem;
+    }
+    
+    canvas {
+        max-height: 300px !important;
+    }
+}
+
+/* Tooltip personalizzati */
+[data-bs-toggle="tooltip"] {
+    cursor: help;
+}
+
+/* Scrollbar personalizzata per tabelle */
+.table-responsive::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}

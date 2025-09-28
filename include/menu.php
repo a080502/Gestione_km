@@ -39,6 +39,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <a href="report_mese.php" class="nav-link <?php if ($current_page == 'report_mese.php') echo 'active'; ?>">
                 <i class="bi bi-bar-chart-line-fill me-2"></i> Report Mensile
             </a>
+            <?php if ($is_manager): ?>
+            <a href="report_avanzato.php" class="nav-link <?php if ($current_page == 'report_avanzato.php') echo 'active'; ?>">
+                <i class="bi bi-shield-exclamation me-2"></i> Report Antifrode
+            </a>
+            <?php endif; ?>
             <a href="esportazione_dati.php" class="nav-link <?php if ($current_page == 'esportazione_dati.php') echo 'active'; ?>">
                 <i class="bi bi-download me-2"></i> Esportazione Dati
             </a>
