@@ -4,6 +4,7 @@ $page_title = "Accesso";
 $page_description = "Effettua l'accesso al sistema di gestione KM";
 $require_auth = false;
 $require_config = false;
+$body_class = "login-page"; // Classe per il body per identificare la pagina di login
 
 // Avvia la sessione PHP
 session_start();

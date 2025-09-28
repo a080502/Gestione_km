@@ -49,7 +49,7 @@ if (isset($require_config) && $require_config) {
     <!-- Additional head content -->
     <?php if (isset($additional_head)): echo $additional_head; endif; ?>
 </head>
-<body>
+<body<?php echo isset($body_class) ? ' class="' . htmlspecialchars($body_class) . '"' : ''; ?>>
     <!-- Loading overlay -->
     <div id="loading-overlay" class="position-fixed top-0 start-0 w-100 h-100 bg-light d-flex justify-content-center align-items-center" style="z-index: 9999; display: none !important;">
         <div class="text-center">
@@ -60,14 +60,15 @@ if (isset($require_config) && $require_config) {
         </div>
     </div>
 
-    <!-- Header fisso -->
+    <!-- Header fisso - Solo per utenti autenticati -->
+    <?php if (isset($_SESSION['username'])): ?>
     <div class="fixed-top-elements">
         <button class="btn btn-primary menu-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#mainMenu" aria-controls="mainMenu">
             <i class="bi bi-list me-2"></i>Menu
         </button>
         <div class="username-display">
             <i class="bi bi-person-circle me-2"></i>
-            <?php echo isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : 'Utente'; ?>
+            <?php echo htmlspecialchars($_SESSION['username']); ?>
         </div>
     </div>
 
@@ -80,3 +81,4 @@ if (isset($require_config) && $require_config) {
         include 'include/menu.php';
     }
     ?>
+    <?php endif; ?>
