@@ -397,9 +397,14 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                     </div>
                     <?php if (count($dati_anomalie) > 10): ?>
                     <div class="card-footer text-center">
-                        <button class="btn btn-outline-primary" onclick="mostraTutteAnomalie()">
-                            Mostra tutte le <?php echo count($dati_anomalie); ?> anomalie
-                        </button>
+                        <div class="btn-group">
+                            <button class="btn btn-outline-primary" onclick="mostraTutteAnomalie()">
+                                Mostra tutte le <?php echo count($dati_anomalie); ?> anomalie
+                            </button>
+                            <button class="btn btn-outline-success" onclick="esportaSoloAnomalie()">
+                                <i class="bi bi-file-excel me-2"></i>Esporta Solo Anomalie
+                            </button>
+                        </div>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -828,8 +833,62 @@ function mostraTutteAnomalie() {
 }
 
 function esportaExcel() {
-    // Implementa esportazione Excel
-    alert('Funzionalità di esportazione Excel in sviluppo.');
+    // Recupera i parametri di filtro attuali
+    const urlParams = new URLSearchParams(window.location.search);
+    const periodo = urlParams.get('periodo') || '12';
+    const targa = urlParams.get('targa') || '';
+    const filiale = urlParams.get('filiale') || '';
+    
+    // Mostra menu di scelta formato
+    const formato = confirm('Scegli il formato di esportazione:\n\nOK = Excel (.xlsx)\nAnnulla = CSV (.csv)') ? 'xlsx' : 'csv';
+    
+    // Costruisci URL di export con filtri
+    const exportUrl = `export_report_excel.php?formato=${formato}&periodo=${periodo}&targa=${encodeURIComponent(targa)}&filiale=${encodeURIComponent(filiale)}`;
+    
+    // Mostra indicatore di caricamento
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-download me-2"></i>Esportazione...';
+    btn.disabled = true;
+    
+    // Crea link nascosto per download
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Ripristina pulsante dopo 2 secondi
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }, 2000);
+}
+
+function esportaSoloAnomalie() {
+    // Scegli il formato
+    const formato = confirm('Formato esportazione anomalie:\n\nOK = Excel (.xlsx)\nAnnulla = CSV (.csv)') ? 'xlsx' : 'csv';
+    
+    // Raccogli gli ID delle anomalie attualmente visualizzate
+    const anomalieIds = [];
+    datiAnomalieJs.forEach(a => anomalieIds.push(a.id));
+    
+    if (anomalieIds.length === 0) {
+        alert('Nessuna anomalia da esportare.');
+        return;
+    }
+    
+    // URL di export
+    const exportUrl = `export_anomalie.php?formato=${formato}&ids=${anomalieIds.join(',')}`;
+    
+    // Download
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // Aggiorna automaticamente ogni 5 minuti
