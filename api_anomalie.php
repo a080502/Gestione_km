@@ -13,8 +13,18 @@ if (!isset($_SESSION['username'])) {
 include_once 'config.php';
 include_once 'dati_utente.php';
 
+// Verifica che i dati utente siano disponibili
+if (!isset($dati_utente) || $dati_utente === null) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Sessione scaduta']);
+    exit();
+}
+
+// Normalizza il nome della variabile per compatibilità
+$utente_data = $dati_utente;
+
 // Verifica privilegi
-if ($utente_data['livello'] > 2) {
+if (!isset($utente_data['livello']) || $utente_data['livello'] > 2) {
     http_response_code(403);
     echo json_encode(['error' => 'Privilegi insufficienti']);
     exit();

@@ -1,6 +1,17 @@
 <?php
-session_start();
+// Assicurati che la sessione sia avviata
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 include_once 'config.php'; // Includi il file di configurazione del database
+
+// Verifica che l'utente sia loggato
+if (!isset($_SESSION['username']) || empty($_SESSION['username'])) {
+    $dati_utente = null;
+    return;
+}
+
 $username = $_SESSION['username'];
 
 // Query per recuperare tutti i dati dell'utente dalla tabella utenti
@@ -15,8 +26,8 @@ if ($result->num_rows > 0) {
     $_SESSION['dati_utente'] = $dati_utente;
 } else {
     // Gestisci il caso in cui l'utente non viene trovato
+    $dati_utente = null;
     $_SESSION['dati_utente'] = null;
 }
-
 
 ?>

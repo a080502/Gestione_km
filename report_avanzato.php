@@ -22,8 +22,31 @@ if (!isset($_SESSION['username'])) {
 include_once 'config.php';
 include_once 'dati_utente.php';
 
+// Debug: Verifica lo stato delle variabili
+if (!isset($_SESSION)) {
+    error_log("ERRORE: Sessione non avviata");
+    header("Location: login.php?error=no_session");
+    exit();
+}
+
+if (!isset($_SESSION['username'])) {
+    error_log("ERRORE: Username non presente in sessione");
+    header("Location: login.php?error=no_username");
+    exit();
+}
+
+// Verifica che i dati utente siano disponibili
+if (!isset($dati_utente) || $dati_utente === null) {
+    error_log("ERRORE: dati_utente non disponibili per utente: " . ($_SESSION['username'] ?? 'sconosciuto'));
+    header("Location: login.php?error=user_data_missing");
+    exit();
+}
+
+// Normalizza il nome della variabile per compatibilità
+$utente_data = $dati_utente;
+
 // Verifica privilegi - solo admin e manager possono accedere
-if ($utente_data['livello'] > 2) {
+if (!isset($utente_data['livello']) || $utente_data['livello'] > 2) {
     header("Location: unauthorized.php");
     exit();
 }
