@@ -40,6 +40,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <i class="bi bi-bar-chart-line-fill me-2"></i> Report Mensile
             </a>
             <?php if ($is_manager): ?>
+            <a href="dashboard_bi.php" class="nav-link <?php if ($current_page == 'dashboard_bi.php') echo 'active'; ?>">
+                <i class="bi bi-graph-up-arrow me-2"></i> Dashboard BI
+            </a>
             <a href="report_avanzato.php" class="nav-link <?php if ($current_page == 'report_avanzato.php') echo 'active'; ?>">
                 <i class="bi bi-shield-exclamation me-2"></i> Report Antifrode
             </a>
