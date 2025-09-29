@@ -496,19 +496,11 @@ foreach ($prerequisites as $check) {
                             
                             <div class="mt-4">
                                 <?php if ($prereqPassed): ?>
-                                <button class="btn btn-primary" onclick="
-                                    console.log('Pulsante Continua cliccato'); 
-                                    if (typeof nextStep === 'function') { 
-                                        nextStep(); 
-                                    } else { 
-                                        console.error('nextStep non è una funzione!'); 
-                                        alert('Errore: funzione nextStep non trovata. Controlla la console per dettagli.'); 
-                                    }
-                                ">
+                                <button class="btn btn-primary" onclick="safeNextStep()">
                                     <i class="bi bi-arrow-right me-2"></i>Continua
                                 </button>
                                 <small class="d-block mt-2 text-muted">
-                                    Debug: <button class="btn btn-sm btn-outline-secondary" onclick="console.log('nextStep disponibile:', typeof nextStep)">Test JS</button>
+                                    Debug: <button class="btn btn-sm btn-outline-secondary" onclick="console.log('nextStep disponibile:', typeof nextStep, 'safeNextStep:', typeof safeNextStep)">Test JS</button>
                                 </small>
                                 <?php else: ?>
                                 <div class="alert alert-warning">
@@ -706,6 +698,20 @@ foreach ($prerequisites as $check) {
         
         let currentStep = 1;
         let dbConfig = {};
+        
+        // Funzione sicura per andare al prossimo step
+        function safeNextStep() {
+            console.log('safeNextStep chiamata');
+            console.log('Tipo di nextStep:', typeof nextStep);
+            
+            if (typeof nextStep === 'function') {
+                nextStep();
+            } else {
+                console.error('nextStep non è ancora disponibile!');
+                alert('Errore: Il sistema non è ancora pronto. Ricarica la pagina e riprova.');
+                return false;
+            }
+        }
         
         function nextStep() {
             console.log('nextStep chiamata, currentStep:', currentStep);
@@ -949,14 +955,25 @@ foreach ($prerequisites as $check) {
             if (!step1) console.error('Elemento step-1 non trovato!');
             if (!step2) console.error('Elemento step-2 non trovato!');
             
+            // Verifica che le funzioni siano definite
+            console.log('Funzioni disponibili:');
+            console.log('- nextStep:', typeof nextStep);
+            console.log('- safeNextStep:', typeof safeNextStep);
+            console.log('- prevStep:', typeof prevStep);
+            
             console.log('Setup inizializzato correttamente');
         });
         
         // Funzione di debug per testare nextStep
         function testNextStep() {
             console.log('Test nextStep...');
-            nextStep();
+            safeNextStep();
         }
+        
+        // Rendi le funzioni globali per sicurezza
+        window.nextStep = nextStep;
+        window.safeNextStep = safeNextStep;
+        window.prevStep = prevStep;
     </script>
 </body>
 </html>
