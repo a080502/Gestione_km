@@ -475,6 +475,61 @@ if ($livello > 2) {
                 });
             }
 
+            updateCharts() {
+                // Aggiorna i grafici esistenti con nuovi dati
+                if (this.charts.kmTrend) {
+                    this.charts.kmTrend.data.labels = this.data.kmTrend?.labels || [];
+                    this.charts.kmTrend.data.datasets[0].data = this.data.kmTrend?.actual || [];
+                    this.charts.kmTrend.data.datasets[1].data = this.data.kmTrend?.target || [];
+                    this.charts.kmTrend.update();
+                }
+
+                if (this.charts.efficiency) {
+                    this.charts.efficiency.data.datasets[0].data = this.data.efficiency?.distribution || [0, 0, 0, 0];
+                    this.charts.efficiency.update();
+                }
+
+                if (this.charts.branchPerformance) {
+                    this.charts.branchPerformance.data.labels = this.data.branchPerformance?.labels || [];
+                    this.charts.branchPerformance.data.datasets[0].data = this.data.branchPerformance?.data || [];
+                    this.charts.branchPerformance.update();
+                }
+
+                // Aggiorna tabella dettagli veicoli
+                this.updateVehicleDetailsTable();
+            }
+
+            updateVehicleDetailsTable() {
+                const tbody = document.getElementById('vehicleDetailsBody');
+                if (!tbody) return;
+
+                const vehicles = this.data.vehicleDetails || [];
+                
+                tbody.innerHTML = '';
+
+                if (vehicles.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Nessun veicolo trovato</td></tr>';
+                    return;
+                }
+
+                vehicles.forEach(vehicle => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${vehicle.targa || '-'}</td>
+                        <td>${vehicle.operatore || '-'}</td>
+                        <td>${vehicle.filiale || '-'}</td>
+                        <td>${vehicle.km_mese?.toLocaleString() || '0'}</td>
+                        <td>${vehicle.target_percentuale?.toFixed(1) || '0.0'}%</td>
+                        <td>${vehicle.consumo_medio?.toFixed(1) || '-'} L/100km</td>
+                        <td>€${vehicle.costi_totali?.toLocaleString() || '0'}</td>
+                        <td>${vehicle.status || '🔴 Nessun dato'}</td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+            }
+
             checkAlerts(kpis) {
                 const alerts = [];
                 
@@ -517,6 +572,7 @@ if ($livello > 2) {
                 await this.loadData();
                 this.updateKPIs();
                 this.updateCharts();
+                this.updateVehicleDetailsTable();
                 this.updateLastRefresh();
             }
 

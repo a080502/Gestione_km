@@ -36,12 +36,14 @@ class DashboardKPIEngine {
     private $livello;
     private $filiale;
     private $divisione;
+    private $username;
 
-    public function __construct($conn, $livello, $filiale = null, $divisione = null) {
+    public function __construct($conn, $livello, $filiale = null, $divisione = null, $username = null) {
         $this->conn = $conn;
         $this->livello = $livello;
         $this->filiale = $filiale;
         $this->divisione = $divisione;
+        $this->username = $username;
     }
 
     /**
@@ -432,6 +434,93 @@ class DashboardKPIEngine {
             'data' => $data
         ];
     }
+
+    /**
+     * Dettagli veicoli per tabella dashboard
+     */
+    public function getVehicleDetails() {
+        $currentMonth = date('Y-m');
+        $currentYear = date('Y');
+
+        $sql = "SELECT
+                    u.targa_mezzo,
+                    u.username as operatore,
+                    u.filiale,
+                    COALESCE(SUM(c.chilometri_finali - c.chilometri_iniziali), 0) as km_mese,
+                    COALESCE(t.target_chilometri / 12, 0) as target_mensile,
+                    ROUND(
+                        CASE
+                            WHEN COALESCE(t.target_chilometri / 12, 0) > 0
+                            THEN (COALESCE(SUM(c.chilometri_finali - c.chilometri_iniziali), 0) / (t.target_chilometri / 12)) * 100
+                            ELSE 0
+                        END, 1
+                    ) as target_percentuale,
+                    ROUND(
+                        AVG(
+                            CASE
+                                WHEN c.litri_carburante IS NOT NULL
+                                    AND c.litri_carburante != ''
+                                    AND c.litri_carburante != '0'
+                                    AND (c.chilometri_finali - c.chilometri_iniziali) > 0
+                                THEN (CAST(c.litri_carburante AS DECIMAL(10,2)) / (c.chilometri_finali - c.chilometri_iniziali)) * 100
+                                ELSE NULL
+                            END
+                        ), 1
+                    ) as consumo_medio,
+                    ROUND(COALESCE(SUM(c.euro_spesi), 0), 2) as costi_totali,
+                    CASE
+                        WHEN COALESCE(SUM(c.chilometri_finali - c.chilometri_iniziali), 0) >= COALESCE(t.target_chilometri / 12, 0) * 0.9 THEN '🟢 Ottimo'
+                        WHEN COALESCE(SUM(c.chilometri_finali - c.chilometri_iniziali), 0) >= COALESCE(t.target_chilometri / 12, 0) * 0.7 THEN '🟡 Buono'
+                        WHEN COALESCE(SUM(c.chilometri_finali - c.chilometri_iniziali), 0) > 0 THEN '🟠 Insufficiente'
+                        ELSE '🔴 Nessun dato'
+                    END as status
+                FROM utenti u
+                LEFT JOIN chilometri c ON u.targa_mezzo = c.targa_mezzo
+                    AND DATE_FORMAT(c.data, '%Y-%m') = ?
+                LEFT JOIN target_annuale t ON u.targa_mezzo = t.targa_mezzo
+                    AND t.anno = ?
+                WHERE u.targa_mezzo IS NOT NULL
+                    AND u.targa_mezzo != ''";
+
+        // Filtro per livello utente
+        if ($this->livello == 2) {
+            $sql .= " AND u.divisione = ?";
+        } elseif ($this->livello == 3) {
+            $sql .= " AND u.username = ?";
+        }
+
+        $sql .= " GROUP BY u.targa_mezzo, u.username, u.filiale, t.target_chilometri
+                  ORDER BY km_mese DESC";
+
+        $stmt = $this->conn->prepare($sql);
+
+        if ($this->livello == 2) {
+            $stmt->bind_param("sis", $currentMonth, $currentYear, $this->divisione);
+        } elseif ($this->livello == 3) {
+            $stmt->bind_param("sis", $currentMonth, $currentYear, $this->username);
+        } else {
+            $stmt->bind_param("si", $currentMonth, $currentYear);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $vehicles = [];
+        while ($row = $result->fetch_assoc()) {
+            $vehicles[] = [
+                'targa' => $row['targa_mezzo'],
+                'operatore' => $row['operatore'],
+                'filiale' => $row['filiale'],
+                'km_mese' => intval($row['km_mese']),
+                'target_percentuale' => floatval($row['target_percentuale']),
+                'consumo_medio' => floatval($row['consumo_medio']),
+                'costi_totali' => floatval($row['costi_totali']),
+                'status' => $row['status']
+            ];
+        }
+
+        return $vehicles;
+    }
 }
 
 try {
@@ -440,7 +529,8 @@ try {
         $conn, 
         $livello, 
         $utente_data['filiale'] ?? null,
-        $utente_data['divisione'] ?? null
+        $utente_data['divisione'] ?? null,
+        $username
     );
 
     // Calcola tutti i dati necessari per la dashboard
@@ -451,6 +541,7 @@ try {
             'distribution' => $kpiEngine->getEfficiencyDistribution()
         ],
         'branchPerformance' => $kpiEngine->getBranchPerformanceData(),
+        'vehicleDetails' => $kpiEngine->getVehicleDetails(),
         'lastUpdate' => date('Y-m-d H:i:s')
     ];
 
