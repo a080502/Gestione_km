@@ -951,8 +951,11 @@ foreach ($prerequisites as $check) {
                 if (data.success) {
                     showResult('db-result', true, data.message);
                     setTimeout(() => {
-                        nextStep();
-                        importSchema();
+                        nextStep(); // Passa allo step 3
+                        // Avvia l'importazione schema con un leggero ritardo per permettere la transizione
+                        setTimeout(() => {
+                            importSchema();
+                        }, 500);
                     }, 1000);
                 } else {
                     showResult('db-result', false, `Errore: ${data.error}`);
@@ -1024,7 +1027,8 @@ foreach ($prerequisites as $check) {
             .then(data => {
                 if (data.success) {
                     console.log('Config file creato con successo');
-                    nextStep();
+                    // Non chiamare nextStep() automaticamente
+                    // Il passaggio allo step successivo sarà gestito dal pulsante "Continua"
                 } else {
                     showResult('schema-result', false, `Errore creazione config: ${data.error}`);
                 }
