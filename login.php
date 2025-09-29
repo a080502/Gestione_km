@@ -9,6 +9,12 @@ $body_class = "login-page"; // Classe per il body per identificare la pagina di 
 // Avvia la sessione PHP
 session_start();
 
+// Include il controllo dell'installazione
+include_once 'include/installation_check.php';
+
+// Verifica se il sistema necessita di installazione
+$needsInstallation = needsInstallation();
+
 // Controlla se l'utente è già loggato, in tal caso reindirizza a index.php
 if (isset($_SESSION['username'])) {
     header("Location: index.php");
@@ -53,6 +59,18 @@ include 'template/header.php';
                             <div class="alert alert-danger d-flex align-items-center fade-in" role="alert">
                                 <i class="bi bi-exclamation-triangle me-2"></i>
                                 <div><?php echo htmlspecialchars($errorMessage); ?></div>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Avviso installazione necessaria -->
+                        <?php if ($needsInstallation): ?>
+                            <div class="alert alert-warning d-flex align-items-center fade-in" role="alert">
+                                <i class="bi bi-exclamation-circle me-2"></i>
+                                <div>
+                                    <strong>Installazione richiesta!</strong><br>
+                                    Il sistema non è ancora stato configurato. 
+                                    <a href="setup.php" class="alert-link">Clicca qui per avviare l'installazione</a>.
+                                </div>
                             </div>
                         <?php endif; ?>
 
@@ -112,6 +130,21 @@ include 'template/header.php';
                         <!-- Link di registrazione -->
                         <div class="text-center mt-4">
                             <hr class="my-3">
+                            
+                            <?php if ($needsInstallation): ?>
+                                <!-- Pulsante di installazione (appare solo se non è mai stata eseguita l'installazione) -->
+                                <div class="mb-3">
+                                    <p class="small text-info mb-2">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Sistema non ancora configurato
+                                    </p>
+                                    <a href="setup.php" class="btn btn-warning btn-sm">
+                                        <i class="bi bi-gear me-1"></i>Installa Sistema
+                                    </a>
+                                </div>
+                                <hr class="my-3">
+                            <?php endif; ?>
+                            
                             <p class="small text-muted mb-2">Non hai un account?</p>
                             <a href="registrazione.php" class="btn btn-outline-secondary btn-sm">
                                 <i class="bi bi-person-plus me-1"></i>Registrati
