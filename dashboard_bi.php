@@ -86,6 +86,19 @@ if ($livello > 2) {
     </style>
 </head>
 <body>
+    <!-- Header fisso - Solo per utenti autenticati -->
+    <?php if (isset($_SESSION['username'])): ?>
+    <div class="fixed-top-elements">
+        <button class="btn btn-primary menu-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#mainMenu" aria-controls="mainMenu">
+            <i class="bi bi-list me-2"></i>Menu
+        </button>
+        <div class="username-display">
+            <i class="bi bi-person-circle me-2"></i>
+            <?php echo htmlspecialchars($_SESSION['username']); ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Header Dashboard -->
     <div class="dashboard-header">
         <div class="container">
