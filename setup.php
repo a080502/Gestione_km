@@ -693,12 +693,12 @@ foreach ($prerequisites as $check) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Debug: verifica caricamento
+        // Setup JavaScript - Versione pulita
         console.log('Setup JavaScript caricato');
-        
+
         let currentStep = 1;
         let dbConfig = {};
-        
+
         // Funzione sicura per andare al prossimo step
         function safeNextStep() {
             console.log('safeNextStep chiamata');
@@ -712,7 +712,7 @@ foreach ($prerequisites as $check) {
                 return false;
             }
         }
-        
+
         function nextStep() {
             console.log('nextStep chiamata, currentStep:', currentStep);
             const currentStepEl = document.getElementById(`step-${currentStep}`);
@@ -730,7 +730,7 @@ foreach ($prerequisites as $check) {
                 console.error('Elemento step-' + currentStep + ' non trovato!');
             }
         }
-        
+
         function prevStep() {
             console.log('prevStep chiamata, currentStep:', currentStep);
             const currentStepEl = document.getElementById(`step-${currentStep}`);
@@ -743,7 +743,7 @@ foreach ($prerequisites as $check) {
                 updateProgress();
             }
         }
-        
+
         function updateProgress() {
             const progress = (currentStep / 5) * 100;
             const progressBar = document.querySelector('.step-progress');
@@ -752,14 +752,14 @@ foreach ($prerequisites as $check) {
                 console.log('Progress aggiornato:', progress + '%');
             }
         }
-        
+
         function showResult(elementId, success, message) {
             const element = document.getElementById(elementId);
             element.className = `result-message ${success ? 'success' : 'error'}`;
             element.innerHTML = `<i class="bi ${success ? 'bi-check-circle' : 'bi-x-circle'} me-2"></i>${message}`;
             element.style.display = 'block';
         }
-        
+
         function testDatabase() {
             const form = document.getElementById('db-form');
             const formData = new FormData(form);
@@ -772,18 +772,15 @@ foreach ($prerequisites as $check) {
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.server_connection) {
-                    // Connessione al server riuscita
                     let message = data.message || `Connessione riuscita! MySQL ${data.version}`;
                     
                     if (data.database_exists === false) {
-                        // Database non esiste ma connessione server OK
                         message += ` <br><small class="text-info"><i class="bi bi-info-circle"></i> Il database sarà creato automaticamente durante l'installazione.</small>`;
                     }
                     
                     showResult('db-result', true, message);
                     document.getElementById('next-step-2').disabled = false;
                     
-                    // Salva la configurazione
                     const form = document.getElementById('db-form');
                     dbConfig = {
                         host: form.host.value,
@@ -792,7 +789,6 @@ foreach ($prerequisites as $check) {
                         database: form.database.value
                     };
                 } else {
-                    // Errore di connessione al server
                     let errorMessage = `Errore di connessione: ${data.error}`;
                     if (!data.server_connection) {
                         errorMessage += '<br><small class="text-muted">Verifica che il server MySQL sia in esecuzione e che le credenziali siano corrette.</small>';
@@ -807,7 +803,7 @@ foreach ($prerequisites as $check) {
                 document.getElementById('next-step-2').disabled = true;
             });
         }
-        
+
         function createDatabase() {
             const formData = new FormData();
             Object.keys(dbConfig).forEach(key => {
@@ -835,7 +831,7 @@ foreach ($prerequisites as $check) {
                 showResult('db-result', false, `Errore: ${error}`);
             });
         }
-        
+
         function importSchema() {
             document.querySelector('#schema-progress .loading').style.display = 'inline-block';
             
@@ -877,7 +873,7 @@ foreach ($prerequisites as $check) {
                 showResult('schema-result', false, `Errore di comunicazione: ${error}`);
             });
         }
-        
+
         function createConfigFile() {
             const formData = new FormData();
             Object.keys(dbConfig).forEach(key => {
@@ -892,17 +888,20 @@ foreach ($prerequisites as $check) {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    console.log('Config file created:', data.message);
+                    console.log('Config file creato con successo');
+                    nextStep();
                 } else {
-                    console.error('Config file error:', data.error);
+                    showResult('schema-result', false, `Errore creazione config: ${data.error}`);
                 }
+            })
+            .catch(error => {
+                showResult('schema-result', false, `Errore: ${error}`);
             });
         }
-        
+
         function createAdmin() {
             const form = document.getElementById('admin-form');
             const formData = new FormData(form);
-            
             Object.keys(dbConfig).forEach(key => {
                 formData.append(key, dbConfig[key]);
             });
@@ -918,7 +917,6 @@ foreach ($prerequisites as $check) {
                     showResult('admin-result', true, data.message);
                     setTimeout(() => {
                         nextStep();
-                        updateProgress();
                     }, 1500);
                 } else {
                     showResult('admin-result', false, `Errore: ${data.error}`);
@@ -928,27 +926,24 @@ foreach ($prerequisites as $check) {
                 showResult('admin-result', false, `Errore: ${error}`);
             });
         }
-        
+
         function deleteSetup() {
             if (confirm('Sei sicuro di voler eliminare il file setup.php?')) {
-                // In un ambiente reale, questo richiederebbe una chiamata al server
                 alert('Ricorda di eliminare manualmente il file setup.php dal server!');
             }
         }
-        
+
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM caricato, inizializzando...');
             updateProgress();
             
-            // Verifica che tutti gli elementi necessari esistano
             const step1 = document.getElementById('step-1');
             const step2 = document.getElementById('step-2');
             
             if (!step1) console.error('Elemento step-1 non trovato!');
             if (!step2) console.error('Elemento step-2 non trovato!');
             
-            // Verifica che le funzioni siano definite
             console.log('Funzioni disponibili:');
             console.log('- nextStep:', typeof nextStep);
             console.log('- safeNextStep:', typeof safeNextStep);
@@ -956,17 +951,15 @@ foreach ($prerequisites as $check) {
             
             console.log('Setup inizializzato correttamente');
         });
-        
-        // Funzione di debug per testare nextStep
-        function testNextStep() {
-            console.log('Test nextStep...');
-            safeNextStep();
-        }
-        
+
         // Rendi le funzioni globali per sicurezza
         window.nextStep = nextStep;
         window.safeNextStep = safeNextStep;
         window.prevStep = prevStep;
+        window.testDatabase = testDatabase;
+        window.createDatabase = createDatabase;
+        window.createAdmin = createAdmin;
+        window.deleteSetup = deleteSetup;
     </script>
 </body>
 </html>
