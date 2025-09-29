@@ -283,6 +283,102 @@ function importDatabaseSchema($host, $username, $password, $database) {
     }
 }
 
+// Funzione per importare i dati di esempio
+function importSampleData($host, $username, $password, $database) {
+    try {
+        // Verifica che il file sample_data.sql esista
+        $sampleFile = 'sample_data.sql';
+        if (!file_exists($sampleFile)) {
+            return [
+                'success' => false, 
+                'error' => 'File sample_data.sql non trovato. Assicurati che sia presente nella directory del setup.'
+            ];
+        }
+        
+        // Connessione al database
+        $conn = new mysqli($host, $username, $password, $database);
+        
+        if ($conn->connect_error) {
+            return [
+                'success' => false, 
+                'error' => 'Connessione al database fallita: ' . $conn->connect_error
+            ];
+        }
+        
+        $conn->set_charset("utf8mb4");
+        
+        // Leggi il file SQL
+        $sqlContent = file_get_contents($sampleFile);
+        
+        if ($sqlContent === false) {
+            return [
+                'success' => false, 
+                'error' => 'Impossibile leggere il file sample_data.sql'
+            ];
+        }
+        
+        // Pulizia del SQL (simile a importDatabaseSchema ma più semplice)
+        $lines = explode("\n", $sqlContent);
+        $cleanedLines = [];
+        
+        foreach ($lines as $line) {
+            $line = trim($line);
+            
+            // Salta righe vuote e commenti
+            if (empty($line) || strpos($line, '--') === 0) continue;
+            
+            $cleanedLines[] = $line;
+        }
+        
+        $cleanedSQL = implode("\n", $cleanedLines);
+        
+        // Dividi le query per punto e virgola
+        $queries = explode(';', $cleanedSQL);
+        
+        $executedQueries = 0;
+        $errors = [];
+        
+        foreach ($queries as $query) {
+            $query = trim($query);
+            
+            // Salta query vuote
+            if (empty($query) || strlen($query) < 5) continue;
+            
+            // Esegui la query
+            if ($conn->query($query)) {
+                $executedQueries++;
+            } else {
+                $errors[] = substr($query, 0, 50) . "... -> " . $conn->error;
+                
+                // Se abbiamo troppi errori, fermati
+                if (count($errors) >= 5) break;
+            }
+        }
+        
+        $conn->close();
+        
+        if (!empty($errors)) {
+            return [
+                'success' => false, 
+                'error' => 'Errori durante importazione dati di esempio: ' . implode(' | ', $errors),
+                'executed_queries' => $executedQueries
+            ];
+        }
+        
+        return [
+            'success' => true, 
+            'message' => "Dati di esempio importati con successo! Inserite $executedQueries query.",
+            'executed_queries' => $executedQueries
+        ];
+        
+    } catch (Exception $e) {
+        return [
+            'success' => false, 
+            'error' => 'Eccezione durante importazione dati di esempio: ' . $e->getMessage()
+        ];
+    }
+}
+
 // Funzione per creare il file di configurazione
 function createConfigFile($host, $username, $password, $database) {
     $configContent = "<?php\n";
@@ -361,6 +457,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
         case 'import_schema':
             $result = importDatabaseSchema($_POST['host'], $_POST['username'], $_POST['password'], $_POST['database']);
+            echo json_encode($result);
+            exit;
+            
+        case 'import_sample_data':
+            $result = importSampleData($_POST['host'], $_POST['username'], $_POST['password'], $_POST['database']);
             echo json_encode($result);
             exit;
             
@@ -594,7 +695,27 @@ foreach ($prerequisites as $check) {
                             
                             <div id="schema-result" class="result-message"></div>
                             
-                            <div class="d-flex justify-content-between">
+                            <!-- Opzione dati di esempio -->
+                            <div id="sample-data-option" class="mt-4" style="display: none;">
+                                <div class="card border-info">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <i class="bi bi-database-add text-info me-2"></i>Dati di Esempio
+                                        </h6>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="install-sample-data">
+                                            <label class="form-check-label" for="install-sample-data">
+                                                <strong>Installa dati di esempio per dimostrazioni</strong>
+                                            </label>
+                                        </div>
+                                        <small class="text-muted">
+                                            Include circa 10 mesi di registrazioni chilometri con utenti, filiali e dati realistici per testare il sistema.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-3">
                                 <button class="btn btn-outline-secondary" onclick="prevStep()">
                                     <i class="bi bi-arrow-left me-2"></i>Indietro
                                 </button>
@@ -715,6 +836,16 @@ foreach ($prerequisites as $check) {
 
         function nextStep() {
             console.log('nextStep chiamata, currentStep:', currentStep);
+            
+            // Gestione speciale per lo step 3 - controllo dati di esempio
+            if (currentStep === 3) {
+                const sampleDataCheckbox = document.getElementById('install-sample-data');
+                if (sampleDataCheckbox && sampleDataCheckbox.checked) {
+                    importSampleData();
+                    return; // Non procedere direttamente allo step successivo
+                }
+            }
+            
             const currentStepEl = document.getElementById(`step-${currentStep}`);
             currentStep++;
             const nextStepEl = document.getElementById(`step-${currentStep}`);
@@ -856,6 +987,10 @@ foreach ($prerequisites as $check) {
                     }
                     showResult('schema-result', true, message);
                     document.getElementById('next-step-3').disabled = false;
+                    
+                    // Mostra l'opzione per i dati di esempio
+                    document.getElementById('sample-data-option').style.display = 'block';
+                    
                     createConfigFile();
                 } else {
                     let errorMessage = `Errore importazione schema: ${data.error}`;
@@ -896,6 +1031,51 @@ foreach ($prerequisites as $check) {
             })
             .catch(error => {
                 showResult('schema-result', false, `Errore: ${error}`);
+            });
+        }
+
+        function importSampleData() {
+            // Mostra il messaggio di caricamento
+            const resultElement = document.getElementById('schema-result');
+            resultElement.innerHTML = `
+                <div class="d-flex align-items-center mb-3">
+                    <div class="spinner-border spinner-border-sm me-3" role="status"></div>
+                    <span>Importazione dati di esempio in corso...</span>
+                </div>
+            `;
+            
+            const formData = new FormData();
+            Object.keys(dbConfig).forEach(key => {
+                formData.append(key, dbConfig[key]);
+            });
+            formData.append('action', 'import_sample_data');
+            
+            fetch('setup.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showResult('schema-result', true, data.message + '<br><small class="text-info">Dati di esempio pronti per le dimostrazioni!</small>');
+                    // Ora procedi al prossimo step
+                    setTimeout(() => {
+                        const currentStepEl = document.getElementById(`step-${currentStep}`);
+                        currentStep++;
+                        const nextStepEl = document.getElementById(`step-${currentStep}`);
+                        
+                        if (nextStepEl) {
+                            if (currentStepEl) currentStepEl.classList.remove('active');
+                            nextStepEl.classList.add('active');
+                            updateProgress();
+                        }
+                    }, 1500);
+                } else {
+                    showResult('schema-result', false, `Errore importazione dati di esempio: ${data.error}<br><small class="text-warning">Puoi comunque continuare senza dati di esempio.</small>`);
+                }
+            })
+            .catch(error => {
+                showResult('schema-result', false, `Errore di comunicazione: ${error}<br><small class="text-warning">Puoi comunque continuare senza dati di esempio.</small>`);
             });
         }
 
