@@ -877,13 +877,6 @@ foreach ($prerequisites as $check) {
                 showResult('schema-result', false, `Errore di comunicazione: ${error}`);
             });
         }
-                }
-            })
-            .catch(error => {
-                document.querySelector('#schema-progress .loading').style.display = 'none';
-                showResult('schema-result', false, `Errore: ${error}`);
-            });
-        }
         
         function createConfigFile() {
             const formData = new FormData();
