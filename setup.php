@@ -179,7 +179,14 @@ function importDatabaseSchema($host, $username, $password, $database) {
         
         $sqlContent = file_get_contents($schemaFile);
         
-        // Pulizia del file SQL
+        // PULIZIA ROBUSTA DEL FILE SQL
+        // 1. Rimuovi tutti i commenti MySQL specifici /*!...*/
+        $sqlContent = preg_replace('/\/\*!\d+.*?\*\/;?/s', '', $sqlContent);
+        
+        // 2. Rimuovi commenti multilinea standard /*...*/
+        $sqlContent = preg_replace('/\/\*.*?\*\//s', '', $sqlContent);
+        
+        // 3. Processa linea per linea per una pulizia più precisa
         $lines = explode("\n", $sqlContent);
         $cleanedLines = [];
         
@@ -192,38 +199,58 @@ function importDatabaseSchema($host, $username, $password, $database) {
             // Salta commenti che iniziano con --
             if (strpos($line, '--') === 0) continue;
             
-            // Salta comandi specifici che non servono
+            // Salta comandi specifici che causano problemi
             if (stripos($line, 'CREATE DATABASE') !== false) continue;
-            if (stripos($line, 'USE ') !== false) continue;
+            if (stripos($line, 'USE `') !== false) continue;
+            if (stripos($line, 'USE ') === 0) continue;
             if (stripos($line, 'START TRANSACTION') !== false) continue;
             if (stripos($line, 'SET SQL_MODE') !== false) continue;
             if (stripos($line, 'SET time_zone') !== false) continue;
-            if (preg_match('/^\/\*.*\*\/$/', $line)) continue; // Commenti /* */
+            if (stripos($line, 'SET @OLD_') !== false) continue;
+            if (stripos($line, 'SET NAMES') !== false) continue;
+            
+            // Salta righe che contengono solo punti e virgola
+            if ($line === ';') continue;
             
             $cleanedLines[] = $line;
         }
         
-        // Ricomponi il SQL pulito
+        // 4. Ricomponi il SQL e fai una pulizia finale
         $cleanedSQL = implode("\n", $cleanedLines);
         
-        // Rimuovi commenti multilinea
-        $cleanedSQL = preg_replace('/\/\*.*?\*\//s', '', $cleanedSQL);
+        // 5. Rimuovi punti e virgola multipli consecutivi
+        $cleanedSQL = preg_replace('/;+/', ';', $cleanedSQL);
         
-        // Dividi le query per punto e virgola
+        // 6. Rimuovi spazi e newline in eccesso
+        $cleanedSQL = preg_replace('/\s+/', ' ', $cleanedSQL);
+        $cleanedSQL = str_replace('; ', ";\n", $cleanedSQL);
+        
+        // 7. Dividi le query per punto e virgola e pulisci ulteriormente
         $queries = explode(';', $cleanedSQL);
         
         $executedQueries = 0;
         $errors = [];
+        $debugQueries = [];
         
-        foreach ($queries as $query) {
+        foreach ($queries as $index => $query) {
             $query = trim($query);
             
-            // Salta query vuote
-            if (empty($query)) continue;
+            // Salta query vuote o che contengono solo spazi/newline
+            if (empty($query) || strlen($query) < 5) continue;
+            
+            // Debug: salva le prime 5 query per il log
+            if (count($debugQueries) < 5) {
+                $debugQueries[] = substr($query, 0, 100) . (strlen($query) > 100 ? '...' : '');
+            }
             
             // Esegui la query
             if (!$conn->query($query)) {
-                $errors[] = "Errore nella query: " . substr($query, 0, 100) . "... -> " . $conn->error;
+                $errors[] = "Query " . ($index + 1) . " fallita: " . substr($query, 0, 50) . "... -> " . $conn->error;
+                
+                // Se abbiamo troppi errori, fermati
+                if (count($errors) >= 5) {
+                    break;
+                }
             } else {
                 $executedQueries++;
             }
@@ -234,19 +261,25 @@ function importDatabaseSchema($host, $username, $password, $database) {
         if (!empty($errors)) {
             return [
                 'success' => false, 
-                'error' => 'Errori durante l\'importazione: ' . implode('; ', $errors),
-                'executed_queries' => $executedQueries
+                'error' => 'Errori durante importazione: ' . implode(' | ', $errors),
+                'executed_queries' => $executedQueries,
+                'debug_queries' => $debugQueries
             ];
         }
         
         return [
             'success' => true, 
             'message' => "Schema importato con successo! Eseguite $executedQueries query.",
-            'executed_queries' => $executedQueries
+            'executed_queries' => $executedQueries,
+            'debug_queries' => $debugQueries
         ];
         
     } catch (Exception $e) {
-        return ['success' => false, 'error' => $e->getMessage()];
+        return [
+            'success' => false, 
+            'error' => 'Eccezione durante importazione: ' . $e->getMessage(),
+            'debug_info' => 'File: ' . $e->getFile() . ', Linea: ' . $e->getLine()
+        ];
     }
 }
 
@@ -790,11 +823,29 @@ foreach ($prerequisites as $check) {
                 document.querySelector('#schema-progress .loading').style.display = 'none';
                 
                 if (data.success) {
-                    showResult('schema-result', true, data.message);
+                    let message = data.message;
+                    if (data.debug_queries && data.debug_queries.length > 0) {
+                        message += '<br><small class="text-muted">Prime query eseguite: ' + data.debug_queries.slice(0,2).join('; ') + '</small>';
+                    }
+                    showResult('schema-result', true, message);
                     document.getElementById('next-step-3').disabled = false;
                     createConfigFile();
                 } else {
-                    showResult('schema-result', false, `Errore: ${data.error}`);
+                    let errorMessage = `Errore importazione schema: ${data.error}`;
+                    if (data.debug_queries) {
+                        errorMessage += '<br><small class="text-info">Query di test: ' + data.debug_queries.slice(0,2).join('; ') + '</small>';
+                    }
+                    if (data.executed_queries !== undefined) {
+                        errorMessage += `<br><small class="text-muted">Query eseguite con successo: ${data.executed_queries}</small>`;
+                    }
+                    showResult('schema-result', false, errorMessage);
+                }
+            })
+            .catch(error => {
+                document.querySelector('#schema-progress .loading').style.display = 'none';
+                showResult('schema-result', false, `Errore di comunicazione: ${error}`);
+            });
+        }
                 }
             })
             .catch(error => {
