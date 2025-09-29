@@ -496,9 +496,20 @@ foreach ($prerequisites as $check) {
                             
                             <div class="mt-4">
                                 <?php if ($prereqPassed): ?>
-                                <button class="btn btn-primary" onclick="nextStep()">
+                                <button class="btn btn-primary" onclick="
+                                    console.log('Pulsante Continua cliccato'); 
+                                    if (typeof nextStep === 'function') { 
+                                        nextStep(); 
+                                    } else { 
+                                        console.error('nextStep non è una funzione!'); 
+                                        alert('Errore: funzione nextStep non trovata. Controlla la console per dettagli.'); 
+                                    }
+                                ">
                                     <i class="bi bi-arrow-right me-2"></i>Continua
                                 </button>
+                                <small class="d-block mt-2 text-muted">
+                                    Debug: <button class="btn btn-sm btn-outline-secondary" onclick="console.log('nextStep disponibile:', typeof nextStep)">Test JS</button>
+                                </small>
                                 <?php else: ?>
                                 <div class="alert alert-warning">
                                     <i class="bi bi-exclamation-triangle me-2"></i>
@@ -690,28 +701,38 @@ foreach ($prerequisites as $check) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Debug: verifica caricamento
+        console.log('Setup JavaScript caricato');
+        
         let currentStep = 1;
         let dbConfig = {};
         
         function nextStep() {
+            console.log('nextStep chiamata, currentStep:', currentStep);
             const currentStepEl = document.getElementById(`step-${currentStep}`);
             currentStep++;
             const nextStepEl = document.getElementById(`step-${currentStep}`);
             
+            console.log('Transizione da step-' + (currentStep-1) + ' a step-' + currentStep);
+            
             if (nextStepEl) {
-                currentStepEl.classList.remove('active');
+                if (currentStepEl) currentStepEl.classList.remove('active');
                 nextStepEl.classList.add('active');
                 updateProgress();
+                console.log('Step cambiato con successo');
+            } else {
+                console.error('Elemento step-' + currentStep + ' non trovato!');
             }
         }
         
         function prevStep() {
+            console.log('prevStep chiamata, currentStep:', currentStep);
             const currentStepEl = document.getElementById(`step-${currentStep}`);
             currentStep--;
             const prevStepEl = document.getElementById(`step-${currentStep}`);
             
             if (prevStepEl) {
-                currentStepEl.classList.remove('active');
+                if (currentStepEl) currentStepEl.classList.remove('active');
                 prevStepEl.classList.add('active');
                 updateProgress();
             }
@@ -719,7 +740,11 @@ foreach ($prerequisites as $check) {
         
         function updateProgress() {
             const progress = (currentStep / 5) * 100;
-            document.querySelector('.step-progress').style.width = `${progress}%`;
+            const progressBar = document.querySelector('.step-progress');
+            if (progressBar) {
+                progressBar.style.width = `${progress}%`;
+                console.log('Progress aggiornato:', progress + '%');
+            }
         }
         
         function showResult(elementId, success, message) {
@@ -913,7 +938,25 @@ foreach ($prerequisites as $check) {
         }
         
         // Initialize
-        updateProgress();
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM caricato, inizializzando...');
+            updateProgress();
+            
+            // Verifica che tutti gli elementi necessari esistano
+            const step1 = document.getElementById('step-1');
+            const step2 = document.getElementById('step-2');
+            
+            if (!step1) console.error('Elemento step-1 non trovato!');
+            if (!step2) console.error('Elemento step-2 non trovato!');
+            
+            console.log('Setup inizializzato correttamente');
+        });
+        
+        // Funzione di debug per testare nextStep
+        function testNextStep() {
+            console.log('Test nextStep...');
+            nextStep();
+        }
     </script>
 </body>
 </html>
