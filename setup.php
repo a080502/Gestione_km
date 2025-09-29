@@ -73,18 +73,68 @@ function checkPrerequisites() {
 // Funzione per testare la connessione al database
 function testDatabaseConnection($host, $username, $password, $database = null) {
     try {
-        $conn = new mysqli($host, $username, $password, $database);
+        // Prima testa la connessione al server MySQL (senza database specifico)
+        $conn = new mysqli($host, $username, $password);
         
         if ($conn->connect_error) {
-            return ['success' => false, 'error' => $conn->connect_error];
+            return [
+                'success' => false, 
+                'error' => $conn->connect_error,
+                'server_connection' => false
+            ];
         }
         
         $version = $conn->server_info;
+        
+        // Se non è specificato un database, testa solo la connessione al server
+        if (empty($database)) {
+            $conn->close();
+            return [
+                'success' => true, 
+                'version' => $version,
+                'server_connection' => true,
+                'database_exists' => null,
+                'message' => 'Connessione al server MySQL riuscita'
+            ];
+        }
+        
+        // Verifica se il database esiste
+        $result = $conn->query("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$database'");
+        $databaseExists = ($result && $result->num_rows > 0);
+        
         $conn->close();
         
-        return ['success' => true, 'version' => $version];
+        // Ora testa la connessione specifica al database se esiste
+        if ($databaseExists) {
+            $connDb = new mysqli($host, $username, $password, $database);
+            if ($connDb->connect_error) {
+                return [
+                    'success' => false,
+                    'error' => $connDb->connect_error,
+                    'server_connection' => true,
+                    'database_exists' => true
+                ];
+            }
+            $connDb->close();
+        }
+        
+        return [
+            'success' => true,
+            'version' => $version,
+            'server_connection' => true,
+            'database_exists' => $databaseExists,
+            'database_name' => $database,
+            'message' => $databaseExists 
+                ? "Connessione riuscita! Database '$database' trovato"
+                : "Connessione al server riuscita! Database '$database' non esiste (verrà creato durante l'installazione)"
+        ];
+        
     } catch (Exception $e) {
-        return ['success' => false, 'error' => $e->getMessage()];
+        return [
+            'success' => false, 
+            'error' => $e->getMessage(),
+            'server_connection' => false
+        ];
     }
 }
 
@@ -388,6 +438,12 @@ foreach ($prerequisites as $check) {
                             <h4><i class="bi bi-database text-primary me-2"></i>Step 2: Configurazione Database</h4>
                             <p class="text-muted">Inserisci i parametri di connessione al database MySQL/MariaDB.</p>
                             
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Nota:</strong> Il database può non esistere ancora. L'installer verificherà prima la connessione al server MySQL 
+                                e, se necessario, creerà automaticamente il database durante il processo di installazione.
+                            </div>
+                            
                             <form id="db-form">
                                 <div class="row">
                                     <div class="col-md-6">
@@ -437,7 +493,7 @@ foreach ($prerequisites as $check) {
                                     <i class="bi bi-arrow-left me-2"></i>Indietro
                                 </button>
                                 <button class="btn btn-primary" onclick="createDatabase()" disabled id="next-step-2">
-                                    <i class="bi bi-arrow-right me-2"></i>Crea Database
+                                    <i class="bi bi-arrow-right me-2"></i>Crea Database e Continua
                                 </button>
                             </div>
                         </div>
@@ -605,8 +661,16 @@ foreach ($prerequisites as $check) {
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    showResult('db-result', true, `Connessione riuscita! MySQL ${data.version}`);
+                if (data.success && data.server_connection) {
+                    // Connessione al server riuscita
+                    let message = data.message || `Connessione riuscita! MySQL ${data.version}`;
+                    
+                    if (data.database_exists === false) {
+                        // Database non esiste ma connessione server OK
+                        message += ` <br><small class="text-info"><i class="bi bi-info-circle"></i> Il database sarà creato automaticamente durante l'installazione.</small>`;
+                    }
+                    
+                    showResult('db-result', true, message);
                     document.getElementById('next-step-2').disabled = false;
                     
                     // Salva la configurazione
@@ -618,12 +682,18 @@ foreach ($prerequisites as $check) {
                         database: form.database.value
                     };
                 } else {
-                    showResult('db-result', false, `Errore di connessione: ${data.error}`);
+                    // Errore di connessione al server
+                    let errorMessage = `Errore di connessione: ${data.error}`;
+                    if (!data.server_connection) {
+                        errorMessage += '<br><small class="text-muted">Verifica che il server MySQL sia in esecuzione e che le credenziali siano corrette.</small>';
+                    }
+                    
+                    showResult('db-result', false, errorMessage);
                     document.getElementById('next-step-2').disabled = true;
                 }
             })
             .catch(error => {
-                showResult('db-result', false, `Errore: ${error}`);
+                showResult('db-result', false, `Errore: ${error}<br><small class="text-muted">Problema di comunicazione con il server.</small>`);
                 document.getElementById('next-step-2').disabled = true;
             });
         }
