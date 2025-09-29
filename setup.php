@@ -177,28 +177,74 @@ function importDatabaseSchema($host, $username, $password, $database) {
             return ['success' => false, 'error' => $conn->connect_error];
         }
         
-        $sql = file_get_contents($schemaFile);
+        $sqlContent = file_get_contents($schemaFile);
         
-        // Rimuovi i commenti e dividi le query
-        $sql = preg_replace('/--.*$/m', '', $sql);
-        $sql = preg_replace('/\/\*.*?\*\//s', '', $sql);
+        // Pulizia del file SQL
+        $lines = explode("\n", $sqlContent);
+        $cleanedLines = [];
         
-        // Esegui le query multiple
-        if ($conn->multi_query($sql)) {
-            // Consuma tutti i risultati
-            do {
-                if ($result = $conn->store_result()) {
-                    $result->free();
-                }
-            } while ($conn->next_result());
+        foreach ($lines as $line) {
+            $line = trim($line);
             
-            $conn->close();
-            return ['success' => true, 'message' => 'Schema del database importato con successo'];
-        } else {
-            $error = $conn->error;
-            $conn->close();
-            return ['success' => false, 'error' => $error];
+            // Salta righe vuote
+            if (empty($line)) continue;
+            
+            // Salta commenti che iniziano con --
+            if (strpos($line, '--') === 0) continue;
+            
+            // Salta comandi specifici che non servono
+            if (stripos($line, 'CREATE DATABASE') !== false) continue;
+            if (stripos($line, 'USE ') !== false) continue;
+            if (stripos($line, 'START TRANSACTION') !== false) continue;
+            if (stripos($line, 'SET SQL_MODE') !== false) continue;
+            if (stripos($line, 'SET time_zone') !== false) continue;
+            if (preg_match('/^\/\*.*\*\/$/', $line)) continue; // Commenti /* */
+            
+            $cleanedLines[] = $line;
         }
+        
+        // Ricomponi il SQL pulito
+        $cleanedSQL = implode("\n", $cleanedLines);
+        
+        // Rimuovi commenti multilinea
+        $cleanedSQL = preg_replace('/\/\*.*?\*\//s', '', $cleanedSQL);
+        
+        // Dividi le query per punto e virgola
+        $queries = explode(';', $cleanedSQL);
+        
+        $executedQueries = 0;
+        $errors = [];
+        
+        foreach ($queries as $query) {
+            $query = trim($query);
+            
+            // Salta query vuote
+            if (empty($query)) continue;
+            
+            // Esegui la query
+            if (!$conn->query($query)) {
+                $errors[] = "Errore nella query: " . substr($query, 0, 100) . "... -> " . $conn->error;
+            } else {
+                $executedQueries++;
+            }
+        }
+        
+        $conn->close();
+        
+        if (!empty($errors)) {
+            return [
+                'success' => false, 
+                'error' => 'Errori durante l\'importazione: ' . implode('; ', $errors),
+                'executed_queries' => $executedQueries
+            ];
+        }
+        
+        return [
+            'success' => true, 
+            'message' => "Schema importato con successo! Eseguite $executedQueries query.",
+            'executed_queries' => $executedQueries
+        ];
+        
     } catch (Exception $e) {
         return ['success' => false, 'error' => $e->getMessage()];
     }
