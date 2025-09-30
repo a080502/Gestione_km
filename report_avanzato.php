@@ -358,7 +358,8 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                         <table class="table table-hover mb-0">
                             <thead class="table-danger">
                                 <tr>
-                                    <th>Data</th>
+                                    <th>Flag</th>
+                                    <th></th>Data</th>
                                     <th>Utente</th>
                                     <th>Targa</th>
                                     <th>KM</th>
@@ -376,10 +377,14 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                     $row_class = $is_flagged ? 'table-info' : ($anomalia['z_score'] > 3 ? 'table-danger' : 'table-warning');
                                 ?>
                                 <tr class="<?php echo $row_class; ?>" data-anomalia-id="<?php echo $anomalia['id']; ?>">
-                                    <td>
+                                    <td class="text-center" style="width: 60px;">
                                         <?php if ($is_flagged): ?>
-                                            <i class="bi bi-flag-fill text-primary me-1" title="Anomalia flaggata"></i>
+                                            <i class="bi bi-flag-fill text-primary" title="Anomalia flaggata da: <?php echo htmlspecialchars($anomalia['flaggato_da']); ?> il <?php echo date('d/m/Y H:i', strtotime($anomalia['data_flag'])); ?>"></i>
+                                        <?php else: ?>
+                                            <span class="text-muted">-</span>
                                         <?php endif; ?>
+                                    </td>
+                                    <td>
                                         <?php echo date('d/m/Y', strtotime($anomalia['data'])); ?>
                                     </td>
                                     <td><strong><?php echo htmlspecialchars($anomalia['username']); ?></strong></td>
@@ -395,12 +400,6 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                     </td>
                                     <td>
                                         <span class="badge bg-secondary"><?php echo htmlspecialchars($anomalia['tipo_anomalia']); ?></span>
-                                        <?php if ($is_flagged): ?>
-                                            <br><small class="text-muted">
-                                                Flaggata da: <?php echo htmlspecialchars($anomalia['flaggato_da']); ?>
-                                                <br>il <?php echo date('d/m/Y H:i', strtotime($anomalia['data_flag'])); ?>
-                                            </small>
-                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
@@ -801,6 +800,13 @@ function mostraModalDettaglio(dati) {
 }
 
 function flagAnomalia(id) {
+    // Controlla se l'anomalia è già flaggata
+    const row = document.querySelector(`tr[data-anomalia-id="${id}"]`);
+    if (row && row.querySelector('.bi-flag-fill')) {
+        alert('Questa anomalia è già stata flaggata!');
+        return;
+    }
+    
     if (confirm('Vuoi segnalare questa registrazione come anomalia verificata?')) {
         const formData = new FormData();
         formData.append('action', 'flag_anomalia');
@@ -859,31 +865,38 @@ function unflagAnomalia(id) {
 function updateAnomaliaRowVisually(id, isFlagged) {
     const row = document.querySelector(`tr[data-anomalia-id="${id}"]`);
     if (row) {
+        const flagCell = row.querySelector('td:first-child'); // Prima colonna per il flag
+        const actionCell = row.querySelector('td:last-child'); // Ultima colonna per le azioni
+        
         if (isFlagged) {
             // Aggiorna per anomalia flaggata
             row.className = 'table-info';
-            const firstTd = row.querySelector('td:first-child');
-            if (!firstTd.querySelector('.bi-flag-fill')) {
-                firstTd.innerHTML = '<i class="bi bi-flag-fill text-primary me-1" title="Anomalia flaggata"></i>' + firstTd.innerHTML;
+            flagCell.innerHTML = '<i class="bi bi-flag-fill text-primary" title="Anomalia flaggata"></i>';
+            
+            // Cambia il pulsante in unflag
+            const flagButton = actionCell.querySelector('.btn-outline-warning');
+            if (flagButton) {
+                flagButton.className = 'btn btn-outline-success btn-sm';
+                flagButton.innerHTML = '<i class="bi bi-flag-slash"></i>';
+                flagButton.title = 'Annulla Flag';
+                flagButton.setAttribute('onclick', `unflagAnomalia(${id})`);
             }
         } else {
             // Aggiorna per anomalia non flaggata
             row.className = 'table-warning'; // o 'table-danger' a seconda del z-score
-            const flagIcon = row.querySelector('.bi-flag-fill');
-            if (flagIcon) {
-                flagIcon.remove();
-            }
-            // Aggiorna anche il pulsante
-            const actionCell = row.querySelector('td:last-child');
-            const flagButton = actionCell.querySelector('.btn-outline-success');
-            if (flagButton) {
-                flagButton.className = 'btn btn-outline-warning btn-sm';
-                flagButton.innerHTML = '<i class="bi bi-flag"></i>';
-                flagButton.title = 'Flagga Anomalia';
-                flagButton.onclick = () => flagAnomalia(id);
+            flagCell.innerHTML = '<span class="text-muted">-</span>';
+            
+            // Cambia il pulsante in flag
+            const unflagButton = actionCell.querySelector('.btn-outline-success');
+            if (unflagButton) {
+                unflagButton.className = 'btn btn-outline-warning btn-sm';
+                unflagButton.innerHTML = '<i class="bi bi-flag"></i>';
+                unflagButton.title = 'Flagga Anomalia';
+                unflagButton.setAttribute('onclick', `flagAnomalia(${id})`);
             }
         }
     }
+}
 }
 
 function flagAnomaliaModal(id) {
