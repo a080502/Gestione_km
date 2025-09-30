@@ -355,20 +355,20 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover table-fixed mb-0" style="table-layout: fixed !important; width: 100% !important;">
+                        <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%; border-collapse: collapse;">
                             <thead class="table-danger">
                                 <tr>
-                                    <th style="width: 100px !important;">Data</th>
-                                    <th style="width: 120px !important;">Utente</th>
-                                    <th style="width: 100px !important;">Targa</th>
-                                    <th style="width: 80px !important; text-align: right !important;">KM</th>
-                                    <th style="width: 80px !important; text-align: right !important;">Litri</th>
-                                    <th style="width: 90px !important; text-align: right !important;">€</th>
-                                    <th style="width: 80px !important; text-align: right !important;">KM/L</th>
-                                    <th style="width: 80px !important; text-align: center !important;">Z-Score</th>
-                                    <th style="width: 140px !important;">Tipo Anomalia</th>
-                                    <th style="width: 100px !important; text-align: center !important;">Azioni</th>
-                                    <th style="width: 60px !important; min-width: 60px !important; max-width: 60px !important; text-align: center !important;">Flag</th>
+                                    <th style="width: 100px; border: 1px solid #ccc;">Data</th>
+                                    <th style="width: 120px; border: 1px solid #ccc;">Utente</th>
+                                    <th style="width: 100px; border: 1px solid #ccc;">Targa</th>
+                                    <th style="width: 80px; border: 1px solid #ccc;">KM</th>
+                                    <th style="width: 80px; border: 1px solid #ccc;">Litri</th>
+                                    <th style="width: 90px; border: 1px solid #ccc;">€</th>
+                                    <th style="width: 80px; border: 1px solid #ccc;">KM/L</th>
+                                    <th style="width: 80px; border: 1px solid #ccc;">Z-Score</th>
+                                    <th style="width: 140px; border: 1px solid #ccc;">Tipo Anomalia</th>
+                                    <th style="width: 100px; border: 1px solid #ccc;">Azioni</th>
+                                    <th style="width: 60px; border: 1px solid #ccc;">Flag</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -377,24 +377,24 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                     $row_class = $is_flagged ? 'table-info' : ($anomalia['z_score'] > 3 ? 'table-danger' : 'table-warning');
                                 ?>
                                 <tr class="<?php echo $row_class; ?>" data-anomalia-id="<?php echo $anomalia['id']; ?>">
-                                    <td style="width: 100px !important;">
+                                    <td style="width: 100px; border: 1px solid #ddd; padding: 8px;">
                                         <?php echo date('d/m/Y', strtotime($anomalia['data'])); ?>
                                     </td>
-                                    <td style="width: 120px !important;"><strong><?php echo htmlspecialchars($anomalia['username']); ?></strong></td>
-                                    <td style="width: 100px !important;"><?php echo htmlspecialchars($anomalia['targa_mezzo']); ?></td>
-                                    <td style="width: 80px !important; text-align: right !important;"><?php echo number_format($anomalia['km_percorsi']); ?></td>
-                                    <td style="width: 80px !important; text-align: right !important;"><?php echo number_format($anomalia['litri'], 2); ?></td>
-                                    <td style="width: 90px !important; text-align: right !important;"><?php echo number_format($anomalia['euro_spesi'], 2); ?>€</td>
-                                    <td style="width: 80px !important; text-align: right !important;"><?php echo number_format($anomalia['km_per_litro'], 2); ?></td>
-                                    <td style="width: 80px !important; text-align: center !important;">
+                                    <td style="width: 120px; border: 1px solid #ddd; padding: 8px;"><strong><?php echo htmlspecialchars($anomalia['username']); ?></strong></td>
+                                    <td style="width: 100px; border: 1px solid #ddd; padding: 8px;"><?php echo htmlspecialchars($anomalia['targa_mezzo']); ?></td>
+                                    <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['km_percorsi']); ?></td>
+                                    <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['litri'], 2); ?></td>
+                                    <td style="width: 90px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['euro_spesi'], 2); ?>€</td>
+                                    <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['km_per_litro'], 2); ?></td>
+                                    <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: center;">
                                         <span class="badge <?php echo $anomalia['z_score'] > 3 ? 'bg-danger' : 'bg-warning'; ?>">
                                             <?php echo number_format($anomalia['z_score'], 2); ?>
                                         </span>
                                     </td>
-                                    <td style="width: 140px !important;">
+                                    <td style="width: 140px; border: 1px solid #ddd; padding: 8px;">
                                         <span class="badge bg-secondary"><?php echo htmlspecialchars($anomalia['tipo_anomalia']); ?></span>
                                     </td>
-                                    <td style="width: 100px !important; text-align: center !important;">
+                                    <td style="width: 100px; border: 1px solid #ddd; padding: 8px; text-align: center;">
                                         <div class="btn-group btn-group-sm">
                                             <button class="btn btn-outline-primary btn-sm" onclick="dettaglioAnomalia(<?php echo $anomalia['id']; ?>)">
                                                 <i class="bi bi-eye"></i>
@@ -410,11 +410,11 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                             <?php endif; ?>
                                         </div>
                                     </td>
-                                    <td class="flag-cell" style="width: 60px !important; min-width: 60px !important; max-width: 60px !important; text-align: center !important; padding: 0.5rem 0.25rem !important;">
+                                    <td style="width: 60px; border: 1px solid #ddd; padding: 8px; text-align: center;">
                                         <?php if ($is_flagged): ?>
-                                            <i class="bi bi-flag-fill flag-icon" title="Anomalia flaggata da: <?php echo htmlspecialchars($anomalia['flaggato_da']); ?> il <?php echo date('d/m/Y H:i', strtotime($anomalia['data_flag'])); ?>"></i>
+                                            <i class="bi bi-flag-fill text-primary" title="Anomalia flaggata da: <?php echo htmlspecialchars($anomalia['flaggato_da']); ?> il <?php echo date('d/m/Y H:i', strtotime($anomalia['data_flag'])); ?>"></i>
                                         <?php else: ?>
-                                            <span class="text-muted" style="font-size: 1.2em;">-</span>
+                                            <span class="text-muted">-</span>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
