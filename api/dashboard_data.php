@@ -71,9 +71,12 @@ class DashboardKPIEngine {
      * Calcola il totale chilometri per il mese specificato
      */
     private function getTotalKmMonth($month) {
+        $startDate = $month . '-01';
+        $endDate = date('Y-m-t', strtotime($startDate));
+
         $sql = "SELECT SUM(chilometri_finali - chilometri_iniziali) as total_km 
                 FROM chilometri 
-                WHERE DATE_FORMAT(data, '%Y-%m') = ?";
+                WHERE data BETWEEN ? AND ?";
         
         if ($this->livello > 1) {
             $sql .= " AND filiale = ?";
@@ -82,9 +85,9 @@ class DashboardKPIEngine {
         $stmt = $this->conn->prepare($sql);
         
         if ($this->livello > 1) {
-            $stmt->bind_param("ss", $month, $this->filiale);
+            $stmt->bind_param("sss", $startDate, $endDate, $this->filiale);
         } else {
-            $stmt->bind_param("s", $month);
+            $stmt->bind_param("ss", $startDate, $endDate);
         }
         
         $stmt->execute();
@@ -97,11 +100,14 @@ class DashboardKPIEngine {
      * Calcola il consumo medio L/100km per il mese
      */
     private function getAverageConsumption($month) {
+        $startDate = $month . '-01';
+        $endDate = date('Y-m-t', strtotime($startDate));
+
         $sql = "SELECT 
                     SUM(CAST(litri_carburante AS DECIMAL(10,2))) as total_litri,
                     SUM(chilometri_finali - chilometri_iniziali) as total_km
                 FROM chilometri 
-                WHERE DATE_FORMAT(data, '%Y-%m') = ? 
+                WHERE data BETWEEN ? AND ?
                     AND litri_carburante IS NOT NULL 
                     AND litri_carburante != ''
                     AND litri_carburante != '0'";
@@ -113,9 +119,9 @@ class DashboardKPIEngine {
         $stmt = $this->conn->prepare($sql);
         
         if ($this->livello > 1) {
-            $stmt->bind_param("ss", $month, $this->filiale);
+            $stmt->bind_param("sss", $startDate, $endDate, $this->filiale);
         } else {
-            $stmt->bind_param("s", $month);
+            $stmt->bind_param("ss", $startDate, $endDate);
         }
         
         $stmt->execute();
@@ -176,10 +182,13 @@ class DashboardKPIEngine {
      * Calcola il costo totale per il mese
      */
     private function getTotalCostMonth($month) {
+        $startDate = $month . '-01';
+        $endDate = date('Y-m-t', strtotime($startDate));
+
         // Costi carburante
         $sql1 = "SELECT SUM(euro_spesi) as fuel_cost 
                  FROM chilometri 
-                 WHERE DATE_FORMAT(data, '%Y-%m') = ? 
+                 WHERE data BETWEEN ? AND ?
                      AND euro_spesi IS NOT NULL";
         
         if ($this->livello > 1) {
@@ -189,15 +198,36 @@ class DashboardKPIEngine {
         $stmt1 = $this->conn->prepare($sql1);
         
         if ($this->livello > 1) {
-            $stmt1->bind_param("ss", $month, $this->filiale);
+            $stmt1->bind_param("sss", $startDate, $endDate, $this->filiale);
         } else {
-            $stmt1->bind_param("s", $month);
+            $stmt1->bind_param("ss", $startDate, $endDate);
         }
         
         $stmt1->execute();
         $fuelCost = floatval($stmt1->get_result()->fetch_assoc()['fuel_cost'] ?? 0);
         
-        // Calcola costi extra (assumendo che siano per il mese corrente)
+        // Calcola costi extra
+        $sql2 = "SELECT SUM(importo) as extra_cost 
+                 FROM costi_extra 
+                 WHERE data BETWEEN ? AND ?";
+        
+        if ($this->livello > 1) {
+            $sql2 .= " AND filiale = ?";
+        }
+        
+        $stmt2 = $this->conn->prepare($sql2);
+        
+        if ($this->livello > 1) {
+            $stmt2->bind_param("sss", $startDate, $endDate, $this->filiale);
+        } else {
+            $stmt2->bind_param("ss", $startDate, $endDate);
+        }
+        
+        $stmt2->execute();
+        $extraCost = floatval($stmt2->get_result()->fetch_assoc()['extra_cost'] ?? 0);
+        
+        return $fuelCost + $extraCost;
+    }
         $sql2 = "SELECT 
                     SUM(ce.costo * (c.chilometri_finali - c.chilometri_iniziali)) as extra_cost
                  FROM chilometri c
