@@ -228,29 +228,6 @@ class DashboardKPIEngine {
         
         return $fuelCost + $extraCost;
     }
-        $sql2 = "SELECT 
-                    SUM(ce.costo * (c.chilometri_finali - c.chilometri_iniziali)) as extra_cost
-                 FROM chilometri c
-                 JOIN costo_extra ce ON c.targa_mezzo = ce.targa_mezzo
-                 WHERE DATE_FORMAT(c.data, '%Y-%m') = ?";
-        
-        if ($this->livello > 1) {
-            $sql2 .= " AND c.filiale = ?";
-        }
-        
-        $stmt2 = $this->conn->prepare($sql2);
-        
-        if ($this->livello > 1) {
-            $stmt2->bind_param("ss", $month, $this->filiale);
-        } else {
-            $stmt2->bind_param("s", $month);
-        }
-        
-        $stmt2->execute();
-        $extraCost = floatval($stmt2->get_result()->fetch_assoc()['extra_cost'] ?? 0);
-        
-        return $fuelCost + $extraCost;
-    }
 
     /**
      * Calcola il trend dei chilometri rispetto al mese precedente
@@ -360,6 +337,10 @@ class DashboardKPIEngine {
      * Calcola distribuzione efficienza flotta
      */
     public function getEfficiencyDistribution() {
+        $currentMonth = date('Y-m');
+        $startDate = $currentMonth . '-01';
+        $endDate = date('Y-m-t', strtotime($startDate));
+
         $sql = "SELECT 
                     targa_mezzo,
                     AVG(
@@ -373,7 +354,7 @@ class DashboardKPIEngine {
                         END
                     ) as avg_consumption
                 FROM chilometri 
-                WHERE DATE_FORMAT(data, '%Y-%m') = ?
+                WHERE data BETWEEN ? AND ?
                     AND litri_carburante IS NOT NULL 
                     AND litri_carburante != ''
                     AND litri_carburante != '0'";
@@ -387,12 +368,10 @@ class DashboardKPIEngine {
         
         $stmt = $this->conn->prepare($sql);
         
-        $currentMonth = date('Y-m');
-        
         if ($this->livello > 1) {
-            $stmt->bind_param("ss", $currentMonth, $this->filiale);
+            $stmt->bind_param("sss", $startDate, $endDate, $this->filiale);
         } else {
-            $stmt->bind_param("s", $currentMonth);
+            $stmt->bind_param("ss", $startDate, $endDate);
         }
         
         $stmt->execute();
@@ -429,13 +408,17 @@ class DashboardKPIEngine {
             ];
         }
         
+        $currentMonth = date('Y-m');
+        $startDate = $currentMonth . '-01';
+        $endDate = date('Y-m-t', strtotime($startDate));
+
         $sql = "SELECT 
                     f.filiale,
                     AVG(
                         (SELECT SUM(c2.chilometri_finali - c2.chilometri_iniziali) 
                          FROM chilometri c2 
                          WHERE c2.filiale = f.filiale 
-                             AND DATE_FORMAT(c2.data, '%Y-%m') = ?) /
+                             AND c2.data BETWEEN ? AND ?) /
                         (SELECT AVG(t.target_chilometri) / 12 
                          FROM target_annuale t 
                          WHERE t.filiale = f.filiale 
@@ -446,8 +429,7 @@ class DashboardKPIEngine {
                 ORDER BY performance DESC";
         
         $stmt = $this->conn->prepare($sql);
-        $currentMonth = date('Y-m');
-        $stmt->bind_param("s", $currentMonth);
+        $stmt->bind_param("ss", $startDate, $endDate);
         $stmt->execute();
         $result = $stmt->get_result();
         
@@ -506,7 +488,7 @@ class DashboardKPIEngine {
                     END as status
                 FROM utenti u
                 LEFT JOIN chilometri c ON u.targa_mezzo = c.targa_mezzo
-                    AND DATE_FORMAT(c.data, '%Y-%m') = ?
+                    AND c.data BETWEEN ? AND ?
                 LEFT JOIN target_annuale t ON u.targa_mezzo = t.targa_mezzo
                     AND t.anno = ?
                 WHERE u.targa_mezzo IS NOT NULL
@@ -522,14 +504,17 @@ class DashboardKPIEngine {
         $sql .= " GROUP BY u.targa_mezzo, u.username, u.filiale, t.target_chilometri
                   ORDER BY km_mese DESC";
 
+        $startDate = $currentMonth . '-01';
+        $endDate = date('Y-m-t', strtotime($startDate));
+
         $stmt = $this->conn->prepare($sql);
 
         if ($this->livello == 2) {
-            $stmt->bind_param("sis", $currentMonth, $currentYear, $this->divisione);
+            $stmt->bind_param("ssis", $startDate, $endDate, $currentYear, $this->divisione);
         } elseif ($this->livello == 3) {
-            $stmt->bind_param("sis", $currentMonth, $currentYear, $this->username);
+            $stmt->bind_param("ssis", $startDate, $endDate, $currentYear, $this->username);
         } else {
-            $stmt->bind_param("si", $currentMonth, $currentYear);
+            $stmt->bind_param("ssi", $startDate, $endDate, $currentYear);
         }
 
         $stmt->execute();
