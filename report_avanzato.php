@@ -358,7 +358,6 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                         <table class="table table-hover table-fixed mb-0" style="table-layout: fixed !important; width: 100% !important;">
                             <thead class="table-danger">
                                 <tr>
-                                    <th style="width: 60px !important; min-width: 60px !important; max-width: 60px !important; text-align: center !important;">Flag</th>
                                     <th style="width: 100px !important;">Data</th>
                                     <th style="width: 120px !important;">Utente</th>
                                     <th style="width: 100px !important;">Targa</th>
@@ -369,6 +368,7 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                     <th style="width: 80px !important; text-align: center !important;">Z-Score</th>
                                     <th style="width: 140px !important;">Tipo Anomalia</th>
                                     <th style="width: 100px !important; text-align: center !important;">Azioni</th>
+                                    <th style="width: 60px !important; min-width: 60px !important; max-width: 60px !important; text-align: center !important;">Flag</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -377,13 +377,6 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                     $row_class = $is_flagged ? 'table-info' : ($anomalia['z_score'] > 3 ? 'table-danger' : 'table-warning');
                                 ?>
                                 <tr class="<?php echo $row_class; ?>" data-anomalia-id="<?php echo $anomalia['id']; ?>">
-                                    <td class="flag-cell" style="width: 60px !important; min-width: 60px !important; max-width: 60px !important; text-align: center !important; padding: 0.5rem 0.25rem !important;">
-                                        <?php if ($is_flagged): ?>
-                                            <i class="bi bi-flag-fill flag-icon" title="Anomalia flaggata da: <?php echo htmlspecialchars($anomalia['flaggato_da']); ?> il <?php echo date('d/m/Y H:i', strtotime($anomalia['data_flag'])); ?>"></i>
-                                        <?php else: ?>
-                                            <span class="text-muted" style="font-size: 1.2em;">-</span>
-                                        <?php endif; ?>
-                                    </td>
                                     <td style="width: 100px !important;">
                                         <?php echo date('d/m/Y', strtotime($anomalia['data'])); ?>
                                     </td>
@@ -416,6 +409,13 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                                 </button>
                                             <?php endif; ?>
                                         </div>
+                                    </td>
+                                    <td class="flag-cell" style="width: 60px !important; min-width: 60px !important; max-width: 60px !important; text-align: center !important; padding: 0.5rem 0.25rem !important;">
+                                        <?php if ($is_flagged): ?>
+                                            <i class="bi bi-flag-fill flag-icon" title="Anomalia flaggata da: <?php echo htmlspecialchars($anomalia['flaggato_da']); ?> il <?php echo date('d/m/Y H:i', strtotime($anomalia['data_flag'])); ?>"></i>
+                                        <?php else: ?>
+                                            <span class="text-muted" style="font-size: 1.2em;">-</span>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>

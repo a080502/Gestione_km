@@ -6,91 +6,91 @@
     width: 100% !important;
 }
 
-.table-fixed th:nth-child(1) { /* Flag */
-    width: 60px !important;
-    text-align: center !important;
-    min-width: 60px !important;
-    max-width: 60px !important;
-}
-
-.table-fixed th:nth-child(2) { /* Data */
+.table-fixed th:nth-child(1) { /* Data */
     width: 100px !important;
     min-width: 100px !important;
 }
 
-.table-fixed th:nth-child(3) { /* Utente */
+.table-fixed th:nth-child(2) { /* Utente */
     width: 120px !important;
     min-width: 120px !important;
 }
 
-.table-fixed th:nth-child(4) { /* Targa */
+.table-fixed th:nth-child(3) { /* Targa */
     width: 100px !important;
     min-width: 100px !important;
 }
 
-.table-fixed th:nth-child(5) { /* KM */
+.table-fixed th:nth-child(4) { /* KM */
     width: 80px !important;
     text-align: right !important;
     min-width: 80px !important;
 }
 
-.table-fixed th:nth-child(6) { /* Litri */
+.table-fixed th:nth-child(5) { /* Litri */
     width: 80px !important;
     text-align: right !important;
     min-width: 80px !important;
 }
 
-.table-fixed th:nth-child(7) { /* € */
+.table-fixed th:nth-child(6) { /* € */
     width: 90px !important;
     text-align: right !important;
     min-width: 90px !important;
 }
 
-.table-fixed th:nth-child(8) { /* KM/L */
+.table-fixed th:nth-child(7) { /* KM/L */
     width: 80px !important;
     text-align: right !important;
     min-width: 80px !important;
 }
 
-.table-fixed th:nth-child(9) { /* Z-Score */
+.table-fixed th:nth-child(8) { /* Z-Score */
     width: 80px !important;
     text-align: center !important;
     min-width: 80px !important;
 }
 
-.table-fixed th:nth-child(10) { /* Tipo Anomalia */
+.table-fixed th:nth-child(9) { /* Tipo Anomalia */
     width: 140px !important;
     min-width: 140px !important;
 }
 
-.table-fixed th:nth-child(11) { /* Azioni */
+.table-fixed th:nth-child(10) { /* Azioni */
     width: 100px !important;
     text-align: center !important;
     min-width: 100px !important;
 }
 
+.table-fixed th:nth-child(11) { /* Flag */
+    width: 60px !important;
+    text-align: center !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+}
+
 /* Allineamento celle */
-.table-fixed td:nth-child(1) { /* Flag */
+.table-fixed td:nth-child(4),
+.table-fixed td:nth-child(5),
+.table-fixed td:nth-child(6),
+.table-fixed td:nth-child(7) {
+    text-align: right !important;
+}
+
+.table-fixed td:nth-child(8) { /* Z-Score */
+    text-align: center !important;
+}
+
+.table-fixed td:nth-child(10) { /* Azioni */
+    text-align: center !important;
+}
+
+.table-fixed td:nth-child(11) { /* Flag */
     text-align: center !important;
     padding: 0.5rem 0.25rem !important;
     width: 60px !important;
     min-width: 60px !important;
     max-width: 60px !important;
-}
-
-.table-fixed td:nth-child(5),
-.table-fixed td:nth-child(6),
-.table-fixed td:nth-child(7),
-.table-fixed td:nth-child(8) {
-    text-align: right !important;
-}
-
-.table-fixed td:nth-child(9) { /* Z-Score */
-    text-align: center !important;
-}
-
-.table-fixed td:nth-child(11) { /* Azioni */
-    text-align: center !important;
 }
 
 /* Flag icon */
