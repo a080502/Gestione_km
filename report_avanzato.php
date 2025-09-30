@@ -163,7 +163,7 @@ function identificaAnomalieConsumo($conn, $soglia_deviazione = 2.0)
                 CASE WHEN af.id IS NOT NULL THEN 1 ELSE 0 END as is_flagged
             FROM stats s
             JOIN medie m ON s.targa_mezzo = m.targa_mezzo
-            LEFT JOIN anomalie_flaggate af ON s.id = af.id_rifornimento
+            LEFT JOIN anomalie_flaggate af ON s.id = af.id_rifornimento AND (af.risolto = 0 OR af.risolto IS NULL)
             WHERE ABS(s.km_per_litro - m.media_consumo) / NULLIF(m.dev_std_consumo, 0) > ?
             OR (s.km_percorsi = 0 AND s.litri > 0)
             OR (s.km_percorsi > 1000 AND s.litri < 10)
@@ -879,8 +879,26 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // Ricarica la pagina per garantire coerenza strutturale
-                        location.reload();
+                        // Aggiorna la riga DOM per indicare che è flaggata
+                        if (row) {
+                            row.classList.remove('table-danger', 'table-warning');
+                            row.classList.add('table-info');
+                            row.style.opacity = '1';
+
+                            // Sostituisci i bottoni: mostra il pulsante unflag
+                            const actionsTd = row.querySelector('td:last-child');
+                            if (actionsTd) {
+                                actionsTd.innerHTML = `
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary btn-sm" onclick="dettaglioAnomalia(${id})">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-success btn-sm" onclick="unflagAnomalia(${id})" title="Marca come Risolto">
+                                            <i class="bi bi-check-circle"></i>
+                                        </button>
+                                    </div>`;
+                            }
+                        }
                     } else {
                         alert('Errore: ' + data.error);
                         if (row) {
@@ -917,8 +935,33 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // Ricarica la pagina per garantire coerenza strutturale
-                        location.reload();
+                        // Imposta lo stato visivo come non flaggato
+                        if (row) {
+                            row.classList.remove('table-info');
+                            // mantenere la classe basata su z_score: se >3 table-danger altrimenti table-warning
+                            const zBadge = row.querySelector('.badge');
+                            const zValue = zBadge ? parseFloat(zBadge.textContent) : null;
+                            if (zValue !== null && !isNaN(zValue) && zValue > 3) {
+                                row.classList.add('table-danger');
+                            } else {
+                                row.classList.add('table-warning');
+                            }
+                            row.style.opacity = '1';
+
+                            // Sostituisci i bottoni: mostra il pulsante flag
+                            const actionsTd = row.querySelector('td:last-child');
+                            if (actionsTd) {
+                                actionsTd.innerHTML = `
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary btn-sm" onclick="dettaglioAnomalia(${id})">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning btn-sm" onclick="flagAnomalia(${id})" title="Marca come Completato">
+                                            <i class="bi bi-check"></i>
+                                        </button>
+                                    </div>`;
+                            }
+                        }
                     } else {
                         alert('Errore: ' + data.error);
                         if (row) {
