@@ -28,7 +28,7 @@ echo "<div class='card-body'>";
 
 if (isset($conn) && $conn instanceof mysqli) {
     echo "<div class='alert alert-success'>✅ Connessione database OK</div>";
-    
+
     // Test query semplice
     $result = $conn->query("SELECT COUNT(*) as total FROM chilometri");
     if ($result) {
@@ -49,7 +49,8 @@ echo "</div>";
 echo "<div class='card-body'>";
 
 // Includi le funzioni
-function identificaAnomalieConsumo($conn, $soglia_deviazione = 2.0) {
+function identificaAnomalieConsumo($conn, $soglia_deviazione = 2.0)
+{
     $sql = "WITH stats AS (
                 SELECT 
                     id,
@@ -95,14 +96,14 @@ function identificaAnomalieConsumo($conn, $soglia_deviazione = 2.0) {
                 CASE WHEN af.id IS NOT NULL THEN 1 ELSE 0 END as is_flagged
             FROM stats s
             JOIN medie m ON s.targa_mezzo = m.targa_mezzo
-            LEFT JOIN anomalie_flaggate af ON s.id = af.id_registrazione
+            LEFT JOIN anomalie_flaggate af ON s.id = af.id_rifornimento
             WHERE ABS(s.km_per_litro - m.media_consumo) / NULLIF(m.dev_std_consumo, 0) > ?
             OR (s.km_percorsi = 0 AND s.litri > 0)
             OR (s.km_percorsi > 1000 AND s.litri < 10)
             OR (s.euro_spesi / NULLIF(s.litri, 0) > 3.0)
             OR (s.euro_spesi / NULLIF(s.litri, 0) < 1.0)
             ORDER BY z_score DESC, data DESC";
-    
+
     $stmt = $conn->prepare($sql);
     if ($stmt) {
         $stmt->bind_param("ddd", $soglia_deviazione, $soglia_deviazione, $soglia_deviazione);
@@ -117,13 +118,13 @@ if (isset($conn)) {
     if ($anomalie) {
         $count_anomalie = $anomalie->num_rows;
         echo "<div class='alert alert-success'>✅ Query anomalie OK - Trovate $count_anomalie anomalie</div>";
-        
+
         if ($count_anomalie > 0) {
             echo "<h6>Prime 3 anomalie:</h6>";
             echo "<table class='table table-sm'>";
             echo "<tr><th>ID</th><th>Data</th><th>Utente</th><th>Targa</th><th>Tipo</th><th>Flaggata</th></tr>";
             $i = 0;
-            while ($row = $anomalie->fetch_assoc() && $i < 3) {
+            while (($row = $anomalie->fetch_assoc()) && $i < 3) {
                 echo "<tr>";
                 echo "<td>" . $row['id'] . "</td>";
                 echo "<td>" . date('d/m/Y', strtotime($row['data'])) . "</td>";
@@ -150,4 +151,3 @@ echo "<a href='report_avanzato.php' class='btn btn-primary'>Apri Report Avanzato
 echo "</div>";
 
 echo "</body></html>";
-?>

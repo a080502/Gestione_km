@@ -1,17 +1,18 @@
-
 <?php
-// DEBUG: Mostra errori PHP e variabili principali
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-echo '<div style="background:#ffe0e0; color:#900; padding:8px; font-size:14px;">';
-echo '<b>DEBUG SESSIONE:</b> ';
-var_dump($_SESSION);
-echo '<br><b>DEBUG GET:</b> ';
-var_dump($_GET);
-echo '<br><b>DEBUG UTENTE:</b> ';
-if (isset($dati_utente)) var_dump($dati_utente);
-echo '</div>';
+// DEBUG: Mostra errori PHP e variabili principali solo per admin o se ?debug=1
+if ((isset($_GET['debug']) && $_GET['debug'] == '1') || (isset($dati_utente['livello']) && $dati_utente['livello'] === 1)) {
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+    echo '<div style="background:#ffe0e0; color:#900; padding:8px; font-size:14px;">';
+    echo '<b>DEBUG SESSIONE:</b> ';
+    var_dump($_SESSION);
+    echo '<br><b>DEBUG GET:</b> ';
+    var_dump($_GET);
+    echo '<br><b>DEBUG UTENTE:</b> ';
+    if (isset($dati_utente)) var_dump($dati_utente);
+    echo '</div>';
+}
 
 /**
  * Report Avanzato Antifrode - Sistema di Gestione KM
@@ -162,7 +163,7 @@ function identificaAnomalieConsumo($conn, $soglia_deviazione = 2.0)
                 CASE WHEN af.id IS NOT NULL THEN 1 ELSE 0 END as is_flagged
             FROM stats s
             JOIN medie m ON s.targa_mezzo = m.targa_mezzo
-            LEFT JOIN anomalie_flaggate af ON s.id = af.id_registrazione
+            LEFT JOIN anomalie_flaggate af ON s.id = af.id_rifornimento
             WHERE ABS(s.km_per_litro - m.media_consumo) / NULLIF(m.dev_std_consumo, 0) > ?
             OR (s.km_percorsi = 0 AND s.litri > 0)
             OR (s.km_percorsi > 1000 AND s.litri < 10)
@@ -525,7 +526,13 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
         <div class="col-lg-6">
             <div class="card">
                 <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="bi bi-trophy me-2"></i>Migliori Consumi (KM/Litro)</h5>
+                    <h5 class="mb-0 d-flex align-items-center">
+                        <i class="bi bi-trophy me-2"></i>Migliori Consumi (KM/Litro)
+                        <span id="mezzi-loading-badge" class="badge bg-warning text-dark ms-3" style="display:none; font-size:0.75rem;">
+                            <span class="spinner-border spinner-border-sm text-dark me-1" role="status" aria-hidden="true"></span>
+                            Aggiornamento...
+                        </span>
+                    </h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -543,34 +550,103 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                             <tbody id="tabella-mezzi-body">
                                 <!-- Contenuto dinamico via AJAX -->
                             </tbody>
+                            <tfoot>
+                                <tr id="tabella-mezzi-loading-row" style="display:none;">
+                                    <td colspan="6" class="text-center py-3">
+                                        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+                                        <span class="ms-2">Caricamento...</span>
+                                    </td>
+                                </tr>
+                                <tr id="tabella-mezzi-empty-row" style="display:none;">
+                                    <td colspan="6" class="text-center text-muted py-3">Nessun mezzo trovato per i filtri selezionati.</td>
+                                </tr>
+                                <tr id="tabella-mezzi-error-row" style="display:none;">
+                                    <td colspan="6" class="text-center text-danger py-3">Errore durante il caricamento dei dati. Riprova più tardi.</td>
+                                </tr>
+                            </tfoot>
                         </table>
                         <script>
-                            function aggiornaTabellaMezzi() {
+                            function mostraElemento(id, mostra) {
+                                const el = document.getElementById(id);
+                                if (!el) return;
+                                el.style.display = mostra ? '' : 'none';
+                            }
+
+                            async function aggiornaTabellaMezzi() {
                                 const params = new URLSearchParams({
                                     periodo: document.getElementById('periodo')?.value || '',
                                     targa: document.getElementById('targa')?.value || '',
                                     filiale: document.getElementById('filiale')?.value || '',
                                     utente: document.getElementById('utente')?.value || ''
                                 });
-                                fetch('report_avanzato_mezzi_ajax.php?' + params.toString())
-                                    .then(r => r.text())
-                                    .then(html => {
-                                        // Prendi solo il tbody della tabella AJAX
-                                        const temp = document.createElement('div');
-                                        temp.innerHTML = html;
-                                        const rows = temp.querySelectorAll('tbody tr');
-                                        const tbody = document.getElementById('tabella-mezzi-body');
-                                        tbody.innerHTML = '';
-                                        rows.forEach(row => tbody.appendChild(row));
-                                    });
+
+                                const tbody = document.getElementById('tabella-mezzi-body');
+                                // Mostra spinner
+                                tbody.innerHTML = '';
+                                mostraElemento('tabella-mezzi-loading-row', true);
+                                mostraElemento('tabella-mezzi-empty-row', false);
+                                mostraElemento('tabella-mezzi-error-row', false);
+
+                                try {
+                                    const res = await fetch('report_avanzato_mezzi_ajax.php?' + params.toString());
+                                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                                    const html = await res.text();
+
+                                    // Inserisci le righe contenute nella risposta
+                                    const temp = document.createElement('div');
+                                    temp.innerHTML = html;
+                                    // Supporta sia <tbody><tr>... che risposte che contengono solo <tr>
+                                    const rowsFromTbody = temp.querySelectorAll('tbody tr');
+                                    const rowsFromRoot = temp.querySelectorAll('tr');
+                                    let rows = [];
+                                    if (rowsFromTbody.length > 0) rows = rowsFromTbody;
+                                    else if (rowsFromRoot.length > 0) rows = rowsFromRoot;
+
+                                    tbody.innerHTML = '';
+                                    rows.forEach(r => tbody.appendChild(r));
+
+                                    // Nascondi spinner
+                                    mostraElemento('tabella-mezzi-loading-row', false);
+
+                                    // Se nessuna riga inserita mostra messaggio vuoto
+                                    if (tbody.querySelectorAll('tr').length === 0) {
+                                        mostraElemento('tabella-mezzi-empty-row', true);
+                                    }
+                                } catch (err) {
+                                    console.error('Errore fetch mezzi:', err);
+                                    mostraElemento('tabella-mezzi-loading-row', false);
+                                    mostraElemento('tabella-mezzi-error-row', true);
+                                }
                             }
-                            // Eventi su tutti i filtri
+
+                            // Debounce helper
+                            function debounce(fn, wait) {
+                                let t;
+                                return function(...args) {
+                                    clearTimeout(t);
+                                    t = setTimeout(() => fn.apply(this, args), wait);
+                                };
+                            }
+
+                            // Funzione ausiliaria per mostrare il badge di aggiornamento
+                            function mostraBadgeAggiornamento(mostra) {
+                                const badge = document.getElementById('mezzi-loading-badge');
+                                if (!badge) return;
+                                badge.style.display = mostra ? '' : 'none';
+                            }
+
+                            // Eventi su tutti i filtri con debounce
+                            const aggiornaDebounced = debounce(aggiornaTabellaMezzi, 350);
                             ['periodo', 'targa', 'filiale', 'utente'].forEach(id => {
                                 const el = document.getElementById(id);
-                                if (el) el.addEventListener('change', aggiornaTabellaMezzi);
+                                if (el) el.addEventListener('change', () => {
+                                    mostraBadgeAggiornamento(true);
+                                    aggiornaDebounced();
+                                });
                             });
                             // Primo caricamento
-                            aggiornaTabellaMezzi();
+                            mostraBadgeAggiornamento(true);
+                            aggiornaTabellaMezzi().then(() => mostraBadgeAggiornamento(false));
                         </script>
                         </table>
                     </div>

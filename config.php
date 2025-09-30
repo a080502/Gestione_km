@@ -25,9 +25,9 @@ if (file_exists($settingsFile)) {
 // Definisci le costanti per la connessione al database
 // Usa l'operatore null coalescing (??) per fornire valori di fallback se le chiavi non sono presenti in $appSettings
 define('DB_HOST', $appSettings['DB_HOST'] ?? 'localhost');
-define('DB_USERNAME', $appSettings['DB_USERNAME'] ?? 'root');
-define('DB_PASSWORD', $appSettings['DB_PASSWORD'] ?? ''); // Fallback a password vuota
-define('DB_NAME', $appSettings['DB_NAME'] ?? 'test');   // Fallback a database 'test'
+define('DB_USERNAME', $appSettings['DB_USERNAME'] ?? 'dome');
+define('DB_PASSWORD', $appSettings['DB_PASSWORD'] ?? 'a080502'); // Fallback a password vuota
+define('DB_NAME', $appSettings['DB_NAME'] ?? 'chilometri');   // Fallback a database 'test'
 
 // Qui ISTANZIA la connessione al database usando le costanti definite
 $conn = new mysqli(DB_HOST, DB_USERNAME, DB_PASSWORD, DB_NAME);
@@ -60,4 +60,3 @@ if (!$conn->set_charset("utf8mb4")) {
 
 // La variabile $conn è ora disponibile per gli script che includono questo file.
 // Non chiudere la connessione qui ($conn->close();) se deve essere usata da altri script.
-?>
