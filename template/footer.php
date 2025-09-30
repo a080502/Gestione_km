@@ -19,8 +19,9 @@
     <!-- Page specific scripts -->
     <?php if (isset($additional_scripts)): echo $additional_scripts; endif; ?>
 
-    <!-- Service Worker Registration -->
-    <?php if (file_exists('service-worker.js')): ?>
+    <!-- Service Worker Registration - TEMPORARILY DISABLED -->
+    <!-- The service worker was causing "exports is not defined" errors that prevented dashboard functionality -->
+    <?php if (false && file_exists('service-worker.js')): ?>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
