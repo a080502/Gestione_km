@@ -7,7 +7,7 @@
 -- Versione del server: 10.4.32-MariaDB
 -- Versione PHP: 8.2.12
 
-SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
@@ -44,7 +44,7 @@ CREATE TABLE `chilometri` (
   `divisione` varchar(255) NOT NULL,
   `filiale` varchar(255) NOT NULL,
   `livello` int(1) NOT NULL,
-  `timestamp` varchar(255) NOT NULL DEFAULT current_timestamp()
+  `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -103,7 +103,7 @@ CREATE TABLE `costo_extra` (
   `id` int(11) NOT NULL,
   `targa_mezzo` varchar(255) NOT NULL,
   `costo` decimal(10,2) DEFAULT NULL,
-  `time_stamp` varchar(255) NOT NULL DEFAULT current_timestamp()
+  `time_stamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -131,7 +131,7 @@ CREATE TABLE `filiali` (
   `id` int(255) NOT NULL,
   `divisione` varchar(255) DEFAULT NULL,
   `filiale` varchar(255) DEFAULT NULL,
-  `time_stamp` varchar(255) NOT NULL DEFAULT current_timestamp()
+  `time_stamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -222,7 +222,7 @@ CREATE TABLE `utenti` (
   `livello` varchar(255) NOT NULL,
   `Nome` varchar(255) NOT NULL,
   `Cognome` varchar(255) NOT NULL,
-  `time_stamp` varchar(255) NOT NULL DEFAULT current_timestamp()
+  `time_stamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

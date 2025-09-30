@@ -1,0 +1,48 @@
+{
+  "name": "Gestione KM - LAMP Stack",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/php:1": {
+      "version": "8.3",
+      "installComposer": true
+    }
+  },
+
+  "onCreateCommand": "bash .devcontainer/setup.sh",
+  "postCreateCommand": "bash .devcontainer/start-services.sh",
+
+  "forwardPorts": [
+    80,
+    3306,
+    8080
+  ],
+
+  "portsAttributes": {
+    "80": {
+      "label": "Apache Web Server",
+      "onAutoForward": "notify"
+    },
+    "3306": {
+      "label": "MySQL Database",
+      "onAutoForward": "ignore"
+    },
+    "8080": {
+      "label": "Alternative Web Port",
+      "onAutoForward": "notify"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-php-debug",
+        "bmewburn.vscode-intelephense-client",
+        "ms-vscode.vscode-apache-conf",
+        "ms-vscode.vscode-mysql"
+      ]
+    }
+  },
+
+  "remoteUser": "vscode"
+}
