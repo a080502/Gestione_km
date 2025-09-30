@@ -808,6 +808,11 @@ function flagAnomalia(id) {
     }
     
     if (confirm('Vuoi segnalare questa registrazione come anomalia verificata?')) {
+        // Mostra loading
+        if (row) {
+            row.style.opacity = '0.5';
+        }
+        
         const formData = new FormData();
         formData.append('action', 'flag_anomalia');
         formData.append('id', id);
@@ -821,22 +826,33 @@ function flagAnomalia(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Anomalia flaggata con successo');
-                // Aggiorna visivamente la riga senza ricaricare la pagina
-                updateAnomaliaRowVisually(id, true);
+                // Ricarica la pagina per garantire coerenza strutturale
+                location.reload();
             } else {
                 alert('Errore: ' + data.error);
+                if (row) {
+                    row.style.opacity = '1';
+                }
             }
         })
         .catch(error => {
             console.error('Error:', error);
             alert('Errore durante la segnalazione');
+            if (row) {
+                row.style.opacity = '1';
+            }
         });
     }
 }
 
 function unflagAnomalia(id) {
     if (confirm('Vuoi rimuovere il flag da questa anomalia?')) {
+        // Mostra loading
+        const row = document.querySelector(`tr[data-anomalia-id="${id}"]`);
+        if (row) {
+            row.style.opacity = '0.5';
+        }
+        
         const formData = new FormData();
         formData.append('action', 'unflag_anomalia');
         formData.append('id', id);
@@ -848,72 +864,22 @@ function unflagAnomalia(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Flag anomalia rimosso con successo');
-                // Aggiorna visivamente la riga senza ricaricare la pagina
-                updateAnomaliaRowVisually(id, false);
+                // Ricarica la pagina per garantire coerenza strutturale
+                location.reload();
             } else {
                 alert('Errore: ' + data.error);
+                if (row) {
+                    row.style.opacity = '1';
+                }
             }
         })
         .catch(error => {
             console.error('Error:', error);
             alert('Errore durante la rimozione del flag');
+            if (row) {
+                row.style.opacity = '1';
+            }
         });
-    }
-}
-
-function updateAnomaliaRowVisually(id, isFlagged) {
-    console.log('updateAnomaliaRowVisually called:', id, isFlagged);
-    const row = document.querySelector(`tr[data-anomalia-id="${id}"]`);
-    console.log('Found row:', row);
-    
-    if (row) {
-        const flagCell = row.querySelector('td:first-child'); // Prima colonna per il flag
-        const actionCell = row.querySelector('td:last-child'); // Ultima colonna per le azioni
-        
-        console.log('Flag cell:', flagCell);
-        console.log('Flag cell position:', Array.from(row.children).indexOf(flagCell));
-        console.log('Row children count:', row.children.length);
-        
-        // Assicuriamoci che la cella flag mantenga sempre gli stili corretti
-        flagCell.style.width = '60px';
-        flagCell.style.minWidth = '60px';
-        flagCell.style.maxWidth = '60px';
-        flagCell.style.textAlign = 'center';
-        flagCell.style.padding = '0.5rem 0.25rem';
-        flagCell.className = 'flag-cell';
-        
-        if (isFlagged) {
-            // Aggiorna per anomalia flaggata
-            row.className = 'table-info';
-            flagCell.innerHTML = '<i class="bi bi-flag-fill flag-icon" title="Anomalia flaggata"></i>';
-            console.log('Set flagged content:', flagCell.innerHTML);
-            
-            // Cambia il pulsante in unflag
-            const flagButton = actionCell.querySelector('.btn-outline-warning');
-            if (flagButton) {
-                flagButton.className = 'btn btn-outline-success btn-sm';
-                flagButton.innerHTML = '<i class="bi bi-flag-slash"></i>';
-                flagButton.title = 'Annulla Flag';
-                flagButton.setAttribute('onclick', `unflagAnomalia(${id})`);
-            }
-        } else {
-            // Aggiorna per anomalia non flaggata
-            row.className = 'table-warning'; // o 'table-danger' a seconda del z-score
-            flagCell.innerHTML = '<span class="text-muted" style="font-size: 1.2em;">-</span>';
-            console.log('Set unflagged content:', flagCell.innerHTML);
-            
-            // Cambia il pulsante in flag
-            const unflagButton = actionCell.querySelector('.btn-outline-success');
-            if (unflagButton) {
-                unflagButton.className = 'btn btn-outline-warning btn-sm';
-                unflagButton.innerHTML = '<i class="bi bi-flag"></i>';
-                unflagButton.title = 'Flagga Anomalia';
-                unflagButton.setAttribute('onclick', `flagAnomalia(${id})`);
-            }
-        }
-        
-        console.log('Final flag cell position:', Array.from(row.children).indexOf(flagCell));
     }
 }
 
