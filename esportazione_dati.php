@@ -72,6 +72,24 @@ if ($mese_selezionato != 'tutti') {
 // Combina le clausole WHERE
 $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
 
+// Crea una seconda clausola WHERE per la subquery con alias c2
+$where_clauses_c2 = [];
+if ($livello == 3) { // Livello 3 è Utente
+      $where_clauses_c2[] = "c2.username = ?";
+} elseif ($livello == 2) { // Livello 2 è Responsabile
+      $where_clauses_c2[] = "EXISTS (SELECT 1 FROM utenti WHERE utenti.username = c2.username AND utenti.divisione = ?)";
+}
+
+if ($anno_selezionato != 'tutti') {
+      $where_clauses_c2[] = "DATE_FORMAT(c2.data, '%Y') = ?";
+}
+
+if ($mese_selezionato != 'tutti') {
+      $where_clauses_c2[] = "DATE_FORMAT(c2.data, '%m') = ?";
+}
+
+$where_sql_c2 = !empty($where_clauses_c2) ? "WHERE " . implode(" AND ", $where_clauses_c2) : "";
+
 // --- Costruzione della query SQL principale ---
 // La query seleziona i dati aggregati per Mese/Utente/Targa E
 // usa una subquery correlata per trovare i chilometri finali dell'ultima registrazione
@@ -118,7 +136,7 @@ $sql_Mese_text = "
                         ORDER BY c2.data DESC, c2.id DESC
                   ) as rn
             FROM chilometri AS c2
-            " . $where_sql . "
+            " . $where_sql_c2 . "
       ) AS ultimi_km ON (
             mese_data.Mese = ultimi_km.Mese 
             AND mese_data.username = ultimi_km.username 
@@ -287,9 +305,12 @@ include 'template/header.php';
                               $sql_Mese = $conn->prepare($sql_Mese_text);
 
                               if ($sql_Mese) {
-                                      // Binding dei parametri
+                                      // Binding dei parametri - ora abbiamo parametri duplicati per le due subquery
                                       if (!empty($params)) {
-                                            $sql_Mese->bind_param($types, ...$params);
+                                            // Duplica i parametri per le due subquery
+                                            $all_params = array_merge($params, $params);
+                                            $all_types = $types . $types;
+                                            $sql_Mese->bind_param($all_types, ...$all_params);
                                       }
 
                                       $sql_Mese->execute();
