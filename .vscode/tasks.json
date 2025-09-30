@@ -1,0 +1,81 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "PHPCS: Check current file",
+            "type": "shell",
+            "command": "./vendor/bin/phpcs",
+            "args": [
+                "--standard=phpcs.xml",
+                "${file}"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": {
+                "owner": "phpcs",
+                "fileLocation": "absolute",
+                "pattern": [
+                    {
+                        "regexp": "^\\s+([0-9]+)\\s+\\|\\s+(ERROR|WARNING)\\s+\\|(.*)$",
+                        "line": 1,
+                        "severity": 2,
+                        "message": 3
+                    }
+                ]
+            }
+        },
+        {
+            "label": "PHPCBF: Fix current file",
+            "type": "shell",
+            "command": "./vendor/bin/phpcbf",
+            "args": [
+                "--standard=phpcs.xml",
+                "${file}"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "PHPCS: Check all PHP files",
+            "type": "shell",
+            "command": "./vendor/bin/phpcs",
+            "args": [
+                "--standard=phpcs.xml",
+                "."
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "PHPCBF: Fix all PHP files",
+            "type": "shell",
+            "command": "./vendor/bin/phpcbf",
+            "args": [
+                "--standard=phpcs.xml",
+                "."
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        }
+    ]
+}

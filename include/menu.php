@@ -28,7 +28,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
             -->
             <hr class="my-2 mx-3">
-            
+
             <!-- Visualizzazione Dati -->
             <div class="px-3 py-2">
                 <small class="text-muted text-uppercase fw-bold"><i class="bi bi-graph-up me-1"></i>Report & Visualizzazioni</small>
@@ -40,17 +40,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <i class="bi bi-bar-chart-line-fill me-2"></i> Report Mensile
             </a>
             <?php if ($is_manager): ?>
-            <a href="dashboard_bi.php" class="nav-link <?php if ($current_page == 'dashboard_bi.php') echo 'active'; ?>">
-                <i class="bi bi-graph-up-arrow me-2"></i> Dashboard BI
-            </a>
-            <a href="report_avanzato.php" class="nav-link <?php if ($current_page == 'report_avanzato.php') echo 'active'; ?>">
-                <i class="bi bi-shield-exclamation me-2"></i> Report Antifrode
-            </a>
+                <a href="dashboard_bi.php" class="nav-link <?php if ($current_page == 'dashboard_bi.php') echo 'active'; ?>">
+                    <i class="bi bi-graph-up-arrow me-2"></i> Dashboard BI
+                </a>
+                <a href="report_avanzato.php" class="nav-link <?php if ($current_page == 'report_avanzato.php') echo 'active'; ?>">
+                    <i class="bi bi-shield-exclamation me-2"></i> Report Antifrode
+                </a>
             <?php endif; ?>
             <a href="esportazione_dati.php" class="nav-link <?php if ($current_page == 'esportazione_dati.php') echo 'active'; ?>">
                 <i class="bi bi-download me-2"></i> Esportazione Dati
             </a>
-			<!--
+            <!--
             <a href="create_pdf.php" class="nav-link <?php if ($current_page == 'create_pdf.php') echo 'active'; ?>">
                 <i class="bi bi-file-earmark-pdf me-2"></i> Genera PDF
             </a>
@@ -59,7 +59,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <hr class="my-2 mx-3">
             
             <!-- Modifica Dati (solo se utente ha dati) -->
-			<!-- 
+            <!-- 
             <div class="px-3 py-2">
                 <small class="text-muted text-uppercase fw-bold"><i class="bi bi-pencil me-1"></i>Modifica Dati</small>
             </div>
@@ -73,20 +73,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <i class="bi bi-trash me-2"></i> Cancella Registrazione
             </a>
 			-->
-            
+
             <!-- Gestione Target (per manager e admin) -->
             <?php if ($is_manager): ?>
-            <hr class="my-2 mx-3">
-            <div class="px-3 py-2">
-                <small class="text-muted text-uppercase fw-bold"><i class="bi bi-bullseye me-1"></i>Gestione Target</small>
-            </div>
-            <a href="gestione_target_annuale.php" class="nav-link <?php if ($current_page == 'gestione_target_annuale.php') echo 'active'; ?>">
-                <i class="bi bi-bullseye me-2"></i> Target Annuale
-            </a>
-            <a href="imposta_target.php" class="nav-link <?php if ($current_page == 'imposta_target.php') echo 'active'; ?>">
-                <i class="bi bi-gear-wide-connected me-2"></i> Imposta Target
-            </a>
-			<!-- 
+                <hr class="my-2 mx-3">
+                <div class="px-3 py-2">
+                    <small class="text-muted text-uppercase fw-bold"><i class="bi bi-bullseye me-1"></i>Gestione Target</small>
+                </div>
+                <a href="gestione_target_annuale.php" class="nav-link <?php if ($current_page == 'gestione_target_annuale.php') echo 'active'; ?>">
+                    <i class="bi bi-bullseye me-2"></i> Target Annuale
+                </a>
+                <a href="imposta_target.php" class="nav-link <?php if ($current_page == 'imposta_target.php') echo 'active'; ?>">
+                    <i class="bi bi-gear-wide-connected me-2"></i> Imposta Target
+                </a>
+                <!-- 
             <a href="modifica_target.php" class="nav-link <?php if ($current_page == 'modifica_target.php') echo 'active'; ?>">
                 <i class="bi bi-pencil-fill me-2"></i> Modifica Target
             </a>
@@ -94,18 +94,18 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <i class="bi bi-save me-2"></i> Salva Target
             </a>
             -->
-            <!-- Gestione Costi Extra -->
-            <hr class="my-2 mx-3">
-            <div class="px-3 py-2">
-                <small class="text-muted text-uppercase fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Costi Sforamento</small>
-            </div>
-            <a href="gestione_costo_extra.php" class="nav-link <?php if ($current_page == 'gestione_costo_extra.php') echo 'active'; ?>">
-                <i class="bi bi-currency-euro me-2"></i> Gestione Costi Extra
-            </a>
-            <a href="inserisci_extra.php" class="nav-link <?php if ($current_page == 'inserisci_extra.php') echo 'active'; ?>">
-                <i class="bi bi-plus-circle me-2"></i> Inserisci Costo Extra
-            </a>
-			<!-- 
+                <!-- Gestione Costi Extra -->
+                <hr class="my-2 mx-3">
+                <div class="px-3 py-2">
+                    <small class="text-muted text-uppercase fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Costi Sforamento</small>
+                </div>
+                <a href="gestione_costo_extra.php" class="nav-link <?php if ($current_page == 'gestione_costo_extra.php') echo 'active'; ?>">
+                    <i class="bi bi-currency-euro me-2"></i> Gestione Costi Extra
+                </a>
+                <a href="inserisci_extra.php" class="nav-link <?php if ($current_page == 'inserisci_extra.php') echo 'active'; ?>">
+                    <i class="bi bi-plus-circle me-2"></i> Inserisci Costo Extra
+                </a>
+                <!-- 
             <a href="modifica_costo_extra.php" class="nav-link <?php if ($current_page == 'modifica_costo_extra.php') echo 'active'; ?>">
                 <i class="bi bi-pencil-square me-2"></i> Modifica Costo Extra
             </a>
@@ -114,20 +114,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
 			-->
             <?php endif; ?>
-            
+
             <!-- Gestione Sistema (solo admin) -->
             <?php if ($is_admin): ?>
-            <hr class="my-2 mx-3">
-            <div class="px-3 py-2">
-                <small class="text-muted text-uppercase fw-bold"><i class="bi bi-gear me-1"></i>Amministrazione</small>
-            </div>
-            <a href="gestisci_utenti.php" class="nav-link <?php if ($current_page == 'gestisci_utenti.php') echo 'active'; ?>">
-                <i class="bi bi-people-fill me-2"></i> Gestione Utenti
-            </a>
-            <a href="registrazione.php" class="nav-link <?php if ($current_page == 'registrazione.php') echo 'active'; ?>">
-                <i class="bi bi-person-plus me-2"></i> Registra Utente
-            </a>
-			<!-- 
+                <hr class="my-2 mx-3">
+                <div class="px-3 py-2">
+                    <small class="text-muted text-uppercase fw-bold"><i class="bi bi-gear me-1"></i>Amministrazione</small>
+                </div>
+                <a href="gestisci_utenti.php" class="nav-link <?php if ($current_page == 'gestisci_utenti.php') echo 'active'; ?>">
+                    <i class="bi bi-people-fill me-2"></i> Gestione Utenti
+                </a>
+                <a href="registrazione.php" class="nav-link <?php if ($current_page == 'registrazione.php') echo 'active'; ?>">
+                    <i class="bi bi-person-plus me-2"></i> Registra Utente
+                </a>
+                <!-- 
             <a href="modifica_utente.php" class="nav-link <?php if ($current_page == 'modifica_utente.php') echo 'active'; ?>">
                 <i class="bi bi-person-gear me-2"></i> Modifica Utente
             </a>
@@ -138,18 +138,18 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <i class="bi bi-person-x me-2"></i> Cancella Utente
             </a>
             -->
-            <!-- Gestione Filiali -->
-            <hr class="my-2 mx-3">
-            <div class="px-3 py-2">
-                <small class="text-muted text-uppercase fw-bold"><i class="bi bi-building me-1"></i>Filiali</small>
-            </div>
-            <a href="gestisci_filiali.php" class="nav-link <?php if ($current_page == 'gestisci_filiali.php') echo 'active'; ?>">
-                <i class="bi bi-building-fill me-2"></i> Gestione Filiali
-            </a>
-            <a href="inserisci_filiale.php" class="nav-link <?php if ($current_page == 'inserisci_filiale.php') echo 'active'; ?>">
-                <i class="bi bi-building-add me-2"></i> Inserisci Filiale
-            </a>
-			<!-- 
+                <!-- Gestione Filiali -->
+                <hr class="my-2 mx-3">
+                <div class="px-3 py-2">
+                    <small class="text-muted text-uppercase fw-bold"><i class="bi bi-building me-1"></i>Filiali</small>
+                </div>
+                <a href="gestisci_filiali.php" class="nav-link <?php if ($current_page == 'gestisci_filiali.php') echo 'active'; ?>">
+                    <i class="bi bi-building-fill me-2"></i> Gestione Filiali
+                </a>
+                <a href="inserisci_filiale.php" class="nav-link <?php if ($current_page == 'inserisci_filiale.php') echo 'active'; ?>">
+                    <i class="bi bi-building-add me-2"></i> Inserisci Filiale
+                </a>
+                <!-- 
             <a href="modifica_filiale.php" class="nav-link <?php if ($current_page == 'modifica_filiale.php') echo 'active'; ?>">
                 <i class="bi bi-building-gear me-2"></i> Modifica Filiale
             </a>
@@ -166,28 +166,28 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <i class="bi bi-list-ul me-2"></i> Lista Filiali
             </a>
             -->
-            <!-- Sistema e Configurazione -->
-            <hr class="my-2 mx-3">
-            <div class="px-3 py-2">
-                <small class="text-muted text-uppercase fw-bold"><i class="bi bi-tools me-1"></i>Sistema</small>
-            </div>
-            <a href="gestione_dati_server.php" class="nav-link <?php if ($current_page == 'gestione_dati_server.php') echo 'active'; ?>">
-                <i class="bi bi-server me-2"></i> Configurazione Server
-            </a>
-            <a href="backup_system.php" class="nav-link <?php if ($current_page == 'backup_system.php') echo 'active'; ?>">
-                <i class="bi bi-shield-check me-2"></i> Sistema Backup
-            </a>
-            <a href="setup.php" class="nav-link <?php if ($current_page == 'setup.php') echo 'active'; ?>">
-                <i class="bi bi-wrench-adjustable me-2"></i> Setup Sistema
-            </a>
-			<!-- 
+                <!-- Sistema e Configurazione -->
+                <hr class="my-2 mx-3">
+                <div class="px-3 py-2">
+                    <small class="text-muted text-uppercase fw-bold"><i class="bi bi-tools me-1"></i>Sistema</small>
+                </div>
+                <a href="gestione_dati_server.php" class="nav-link <?php if ($current_page == 'gestione_dati_server.php') echo 'active'; ?>">
+                    <i class="bi bi-server me-2"></i> Configurazione Server
+                </a>
+                <a href="backup_system.php" class="nav-link <?php if ($current_page == 'backup_system.php') echo 'active'; ?>">
+                    <i class="bi bi-shield-check me-2"></i> Sistema Backup
+                </a>
+                <a href="setup.php" class="nav-link <?php if ($current_page == 'setup.php') echo 'active'; ?>">
+                    <i class="bi bi-wrench-adjustable me-2"></i> Setup Sistema
+                </a>
+                <!-- 
             <a href="send_email.php" class="nav-link <?php if ($current_page == 'send_email.php') echo 'active'; ?>">
                 <i class="bi bi-envelope me-2"></i> Invio Email
             </a>
             -->
-			
-            <!-- Testing e Debug -->
-			<!-- 
+
+                <!-- Testing e Debug -->
+                <!-- 
             <hr class="my-2 mx-3">
             <div class="px-3 py-2">
                 <small class="text-muted text-uppercase fw-bold"><i class="bi bi-bug me-1"></i>Test & Debug</small>
@@ -205,24 +205,24 @@ $current_page = basename($_SERVER['PHP_SELF']);
             
             <hr class="my-2 mx-3">
             -->
-            <!-- Account -->
-            <div class="px-3 py-2">
-                <small class="text-muted text-uppercase fw-bold"><i class="bi bi-person me-1"></i>Account</small>
-            </div>
-            <?php if (!isset($_SESSION['username'])): ?>
-            <a href="login.php" class="nav-link <?php if ($current_page == 'login.php') echo 'active'; ?>">
-                <i class="bi bi-box-arrow-in-right me-2"></i> Accedi
-            </a>
-            <a href="registrazione.php" class="nav-link <?php if ($current_page == 'registrazione.php') echo 'active'; ?>">
-                <i class="bi bi-person-plus me-2"></i> Registrati
-            </a>
-            <?php else: ?>
-            <a href="logout.php" class="nav-link text-danger">
-                <i class="bi bi-box-arrow-right me-2"></i> Disconnetti
-            </a>
-            <?php endif; ?>
+                <!-- Account -->
+                <div class="px-3 py-2">
+                    <small class="text-muted text-uppercase fw-bold"><i class="bi bi-person me-1"></i>Account</small>
+                </div>
+                <?php if (!isset($_SESSION['username'])): ?>
+                    <a href="login.php" class="nav-link <?php if ($current_page == 'login.php') echo 'active'; ?>">
+                        <i class="bi bi-box-arrow-in-right me-2"></i> Accedi
+                    </a>
+                    <a href="registrazione.php" class="nav-link <?php if ($current_page == 'registrazione.php') echo 'active'; ?>">
+                        <i class="bi bi-person-plus me-2"></i> Registrati
+                    </a>
+                <?php else: ?>
+                    <a href="logout.php" class="nav-link text-danger">
+                        <i class="bi bi-box-arrow-right me-2"></i> Disconnetti
+                    </a>
+                <?php endif; ?>
         </nav>
-        
+
         <!-- Card informazioni utente -->
         <?php if (isset($utente_data)): ?>
             <div class="mt-auto p-3">

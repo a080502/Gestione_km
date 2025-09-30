@@ -36,13 +36,8 @@ function getAnomaliePerId($conn, $ids) {
                 c.euro_spesi,
                 (c.chilometri_finali - c.chilometri_iniziali) / NULLIF(CAST(c.litri_carburante as DECIMAL(10,2)), 0) as km_per_litro,
                 c.euro_spesi / NULLIF(CAST(c.litri_carburante as DECIMAL(10,2)), 0) as prezzo_per_litro,
-                c.note,
-                af.tipo_flag,
-                af.note as note_flag,
-                af.flaggato_da,
-                af.data_flag
+                c.note
             FROM chilometri c
-            LEFT JOIN anomalie_flaggate af ON c.id = af.id_registrazione
             WHERE c.id IN ($placeholders)
             ORDER BY c.data DESC";
     
@@ -227,7 +222,7 @@ if ($formato === 'csv') {
     fputcsv($output, [
         'ID', 'Data', 'Username', 'Targa', 'Filiale', 'Divisione',
         'KM Percorsi', 'Litri', 'Euro Spesi', 'KM/L', 'Prezzo/L',
-        'Note Registrazione', 'Flaggata', 'Tipo Flag', 'Note Flag', 'Flaggato Da'
+        'Note Registrazione'
     ], ';');
     
     while ($row = $anomalie_result->fetch_assoc()) {
@@ -243,11 +238,7 @@ if ($formato === 'csv') {
             round($row['euro_spesi'], 2),
             round($row['km_per_litro'], 2),
             round($row['prezzo_per_litro'], 2),
-            $row['note'],
-            $row['tipo_flag'] ? 'SÌ' : 'NO',
-            $row['tipo_flag'] ?: '',
-            $row['note_flag'] ?: '',
-            $row['flaggato_da'] ?: ''
+            $row['note']
         ], ';');
     }
     
@@ -266,7 +257,6 @@ if ($formato === 'csv') {
         <meta charset="UTF-8">
         <style>
             .header { background-color: #DC3545; color: white; font-weight: bold; }
-            .flaggata { background-color: #FFF3CD; }
             .critica { background-color: #F8D7DA; }
             .numero { mso-number-format: "#,##0.00"; }
             .data { mso-number-format: "dd/mm/yyyy"; }
@@ -275,21 +265,20 @@ if ($formato === 'csv') {
     <body>
     
     <table border="1">
-        <tr><td colspan="16" class="header">REPORT ANOMALIE ANTIFRODE</td></tr>
+        <tr><td colspan="12" class="header">REPORT ANOMALIE ANTIFRODE</td></tr>
         <tr><td>Generato il:</td><td><?php echo date('d/m/Y H:i:s'); ?></td></tr>
         <tr><td>Totale anomalie:</td><td><?php echo count($ids_anomalie); ?></td></tr>
         <tr><td>Operatore:</td><td><?php echo $_SESSION['username']; ?></td></tr>
-        <tr><td colspan="16">&nbsp;</td></tr>
+        <tr><td colspan="12">&nbsp;</td></tr>
         
         <tr class="header">
             <td>ID</td><td>Data</td><td>Username</td><td>Targa</td><td>Filiale</td><td>Divisione</td>
             <td>KM Percorsi</td><td>Litri</td><td>Euro Spesi</td><td>KM/L</td><td>Prezzo/L</td>
-            <td>Note Registrazione</td><td>Flaggata</td><td>Tipo Flag</td><td>Note Flag</td><td>Flaggato Da</td>
+            <td>Note Registrazione</td>
         </tr>
         
         <?php while ($row = $anomalie_result->fetch_assoc()): 
             $classe = '';
-            if ($row['tipo_flag']) $classe = 'flaggata';
             if ($row['km_per_litro'] > 20 || $row['km_per_litro'] < 5) $classe = 'critica';
         ?>
         <tr class="<?php echo $classe; ?>">
@@ -305,10 +294,6 @@ if ($formato === 'csv') {
             <td class="numero"><?php echo round($row['km_per_litro'], 2); ?></td>
             <td class="numero"><?php echo round($row['prezzo_per_litro'], 2); ?></td>
             <td><?php echo htmlspecialchars($row['note'] ?: ''); ?></td>
-            <td><?php echo $row['tipo_flag'] ? 'SÌ' : 'NO'; ?></td>
-            <td><?php echo htmlspecialchars($row['tipo_flag'] ?: ''); ?></td>
-            <td><?php echo htmlspecialchars($row['note_flag'] ?: ''); ?></td>
-            <td><?php echo htmlspecialchars($row['flaggato_da'] ?: ''); ?></td>
         </tr>
         <?php endwhile; ?>
     </table>

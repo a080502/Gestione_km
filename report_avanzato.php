@@ -1,4 +1,18 @@
+
 <?php
+// DEBUG: Mostra errori PHP e variabili principali
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+echo '<div style="background:#ffe0e0; color:#900; padding:8px; font-size:14px;">';
+echo '<b>DEBUG SESSIONE:</b> ';
+var_dump($_SESSION);
+echo '<br><b>DEBUG GET:</b> ';
+var_dump($_GET);
+echo '<br><b>DEBUG UTENTE:</b> ';
+if (isset($dati_utente)) var_dump($dati_utente);
+echo '</div>';
+
 /**
  * Report Avanzato Antifrode - Sistema di Gestione KM
  * Analisi consumi, identificazione anomalie e statistiche avanzate
@@ -61,21 +75,22 @@ $filtro_filiale = isset($_GET['filiale']) ? $_GET['filiale'] : '';
 include 'template/header.php';
 
 // Funzioni di analisi
-function calcolaConsumiMedi($conn, $targa = '', $mesi = 12) {
+function calcolaConsumiMedi($conn, $targa = '', $mesi = 12)
+{
     $where_clauses = ["1=1"];
     $params = [];
     $types = "";
-    
+
     if (!empty($targa)) {
         $where_clauses[] = "targa_mezzo = ?";
         $params[] = $targa;
         $types .= "s";
     }
-    
+
     $where_clauses[] = "data >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
     $params[] = $mesi;
     $types .= "i";
-    
+
     $sql = "SELECT 
                 targa_mezzo,
                 username,
@@ -91,7 +106,7 @@ function calcolaConsumiMedi($conn, $targa = '', $mesi = 12) {
             WHERE " . implode(" AND ", $where_clauses) . "
             GROUP BY targa_mezzo, username
             ORDER BY consumo_medio_km_litro DESC";
-    
+
     $stmt = $conn->prepare($sql);
     if (!empty($params)) {
         $stmt->bind_param($types, ...$params);
@@ -100,7 +115,8 @@ function calcolaConsumiMedi($conn, $targa = '', $mesi = 12) {
     return $stmt->get_result();
 }
 
-function identificaAnomalieConsumo($conn, $soglia_deviazione = 2.0) {
+function identificaAnomalieConsumo($conn, $soglia_deviazione = 2.0)
+{
     $sql = "WITH stats AS (
                 SELECT 
                     id,
@@ -153,14 +169,15 @@ function identificaAnomalieConsumo($conn, $soglia_deviazione = 2.0) {
             OR (s.euro_spesi / NULLIF(s.litri, 0) > 3.0)
             OR (s.euro_spesi / NULLIF(s.litri, 0) < 1.0)
             ORDER BY z_score DESC, data DESC";
-    
+
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ddd", $soglia_deviazione, $soglia_deviazione, $soglia_deviazione);
     $stmt->execute();
     return $stmt->get_result();
 }
 
-function getAndamentoConsumi($conn, $mesi = 12) {
+function getAndamentoConsumi($conn, $mesi = 12)
+{
     $sql = "SELECT 
                 DATE_FORMAT(data, '%Y-%m') as mese,
                 COUNT(*) as numero_rifornimenti,
@@ -173,14 +190,52 @@ function getAndamentoConsumi($conn, $mesi = 12) {
             AND CAST(litri_carburante as DECIMAL(10,2)) > 0
             GROUP BY DATE_FORMAT(data, '%Y-%m')
             ORDER BY mese";
-    
+
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $mesi);
     $stmt->execute();
     return $stmt->get_result();
 }
 
-function getStatisticheUtenti($conn) {
+function getStatisticheUtenti($conn, $filtro_utente = '', $filtro_targa = '', $filtro_filiale = '', $filtro_periodo = '12')
+{
+    $where = [];
+    $params = [];
+    $types = '';
+
+    // Periodo
+    if (is_numeric($filtro_periodo) && (int)$filtro_periodo > 0) {
+        $where[] = "data >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
+        $params[] = (int)$filtro_periodo;
+        $types .= 'i';
+    } else {
+        $where[] = "data >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)";
+    }
+
+    // Targa
+    if (!empty($filtro_targa)) {
+        $where[] = "targa_mezzo = ?";
+        $params[] = $filtro_targa;
+        $types .= 's';
+    }
+    // Filiale
+    if (!empty($filtro_filiale)) {
+        $where[] = "filiale = ?";
+        $params[] = $filtro_filiale;
+        $types .= 's';
+    }
+    // Utente
+    if (!empty($filtro_utente)) {
+        $where[] = "username = ?";
+        $params[] = $filtro_utente;
+        $types .= 's';
+    }
+
+    $where[] = "CAST(litri_carburante as DECIMAL(10,2)) > 0";
+    $where[] = "(chilometri_finali - chilometri_iniziali) > 0";
+    $where[] = "(chilometri_finali - chilometri_iniziali) < 5000";
+    $where[] = "CAST(litri_carburante as DECIMAL(10,2)) < 200";
+
     $sql = "SELECT 
                 username,
                 targa_mezzo,
@@ -194,19 +249,24 @@ function getStatisticheUtenti($conn) {
                 MAX(data) as ultima_registrazione,
                 DATEDIFF(MAX(data), MIN(data)) as giorni_attivita
             FROM chilometri 
-            WHERE data >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-            AND CAST(litri_carburante as DECIMAL(10,2)) > 0
+            WHERE " . implode(' AND ', $where) . "
             GROUP BY username, targa_mezzo, filiale
+            HAVING consumo_medio > 3 AND consumo_medio < 100
             ORDER BY consumo_medio DESC";
-    
-    return $conn->query($sql);
+
+    $stmt = $conn->prepare($sql);
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+    $stmt->execute();
+    return $stmt->get_result();
 }
 
 // Esegui le analisi
 $consumi_medi = calcolaConsumiMedi($conn, $filtro_targa, $filtro_periodo);
 $anomalie = identificaAnomalieConsumo($conn);
 $andamento_consumi = getAndamentoConsumi($conn, $filtro_periodo);
-$statistiche_utenti = getStatisticheUtenti($conn);
+$statistiche_utenti = getStatisticheUtenti($conn, $filtro_utente, $filtro_targa, $filtro_filiale, $filtro_periodo);
 
 // Prepara dati per i grafici
 $dati_andamento = [];
@@ -347,97 +407,89 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
 
     <!-- Anomalie Critiche -->
     <?php if (!empty($dati_anomalie)): ?>
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-danger">
-                <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0"><i class="bi bi-shield-x me-2"></i>Anomalie Critiche Rilevate</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%; border-collapse: collapse;">
-                            <thead class="table-danger">
-                                <tr>
-                                    <th style="width: 100px; border: 1px solid #ccc;">Data</th>
-                                    <th style="width: 120px; border: 1px solid #ccc;">Utente</th>
-                                    <th style="width: 100px; border: 1px solid #ccc;">Targa</th>
-                                    <th style="width: 80px; border: 1px solid #ccc;">KM</th>
-                                    <th style="width: 80px; border: 1px solid #ccc;">Litri</th>
-                                    <th style="width: 90px; border: 1px solid #ccc;">€</th>
-                                    <th style="width: 80px; border: 1px solid #ccc;">KM/L</th>
-                                    <th style="width: 80px; border: 1px solid #ccc;">Z-Score</th>
-                                    <th style="width: 140px; border: 1px solid #ccc;">Tipo Anomalia</th>
-                                    <th style="width: 100px; border: 1px solid #ccc;">Azioni</th>
-                                    <th style="width: 60px; border: 1px solid #ccc;">Flag</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach (array_slice($dati_anomalie, 0, 10) as $anomalia): 
-                                    $is_flagged = $anomalia['is_flagged'] == 1;
-                                    $row_class = $is_flagged ? 'table-info' : ($anomalia['z_score'] > 3 ? 'table-danger' : 'table-warning');
-                                ?>
-                                <tr class="<?php echo $row_class; ?>" data-anomalia-id="<?php echo $anomalia['id']; ?>">
-                                    <td style="width: 100px; border: 1px solid #ddd; padding: 8px;">
-                                        <?php echo date('d/m/Y', strtotime($anomalia['data'])); ?>
-                                    </td>
-                                    <td style="width: 120px; border: 1px solid #ddd; padding: 8px;"><strong><?php echo htmlspecialchars($anomalia['username']); ?></strong></td>
-                                    <td style="width: 100px; border: 1px solid #ddd; padding: 8px;"><?php echo htmlspecialchars($anomalia['targa_mezzo']); ?></td>
-                                    <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['km_percorsi']); ?></td>
-                                    <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['litri'], 2); ?></td>
-                                    <td style="width: 90px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['euro_spesi'], 2); ?>€</td>
-                                    <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['km_per_litro'], 2); ?></td>
-                                    <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: center;">
-                                        <span class="badge <?php echo $anomalia['z_score'] > 3 ? 'bg-danger' : 'bg-warning'; ?>">
-                                            <?php echo number_format($anomalia['z_score'], 2); ?>
-                                        </span>
-                                    </td>
-                                    <td style="width: 140px; border: 1px solid #ddd; padding: 8px;">
-                                        <span class="badge bg-secondary"><?php echo htmlspecialchars($anomalia['tipo_anomalia']); ?></span>
-                                    </td>
-                                    <td style="width: 100px; border: 1px solid #ddd; padding: 8px; text-align: center;">
-                                        <div class="btn-group btn-group-sm">
-                                            <button class="btn btn-outline-primary btn-sm" onclick="dettaglioAnomalia(<?php echo $anomalia['id']; ?>)">
-                                                <i class="bi bi-eye"></i>
-                                            </button>
-                                            <?php if ($is_flagged): ?>
-                                                <button class="btn btn-outline-success btn-sm" onclick="unflagAnomalia(<?php echo $anomalia['id']; ?>)" title="Annulla Flag">
-                                                    <i class="bi bi-flag-slash"></i>
-                                                </button>
-                                            <?php else: ?>
-                                                <button class="btn btn-outline-warning btn-sm" onclick="flagAnomalia(<?php echo $anomalia['id']; ?>)" title="Flagga Anomalia">
-                                                    <i class="bi bi-flag"></i>
-                                                </button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                    <td style="width: 60px; border: 1px solid #ddd; padding: 8px; text-align: center;">
-                                        <?php if ($is_flagged): ?>
-                                            <i class="bi bi-flag-fill text-primary" title="Anomalia flaggata da: <?php echo htmlspecialchars($anomalia['flaggato_da']); ?> il <?php echo date('d/m/Y H:i', strtotime($anomalia['data_flag'])); ?>"></i>
-                                        <?php else: ?>
-                                            <span class="text-muted">-</span>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="bi bi-shield-x me-2"></i>Anomalie Critiche Rilevate</h5>
                     </div>
-                    <?php if (count($dati_anomalie) > 10): ?>
-                    <div class="card-footer text-center">
-                        <div class="btn-group">
-                            <button class="btn btn-outline-primary" onclick="mostraTutteAnomalie()">
-                                Mostra tutte le <?php echo count($dati_anomalie); ?> anomalie
-                            </button>
-                            <button class="btn btn-outline-success" onclick="esportaSoloAnomalie()">
-                                <i class="bi bi-file-excel me-2"></i>Esporta Solo Anomalie
-                            </button>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%; border-collapse: collapse;">
+                                <thead class="table-danger">
+                                    <tr>
+                                        <th style="width: 100px; border: 1px solid #ccc;">Data</th>
+                                        <th style="width: 120px; border: 1px solid #ccc;">Utente</th>
+                                        <th style="width: 100px; border: 1px solid #ccc;">Targa</th>
+                                        <th style="width: 80px; border: 1px solid #ccc;">KM</th>
+                                        <th style="width: 80px; border: 1px solid #ccc;">Litri</th>
+                                        <th style="width: 90px; border: 1px solid #ccc;">€</th>
+                                        <th style="width: 80px; border: 1px solid #ccc;">KM/L</th>
+                                        <th style="width: 80px; border: 1px solid #ccc;">Z-Score</th>
+                                        <th style="width: 100px; border: 1px solid #ccc;">Tipo Anomalia</th>
+                                        <th style="width: 100px; border: 1px solid #ccc;">Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach (array_slice($dati_anomalie, 0, 10) as $anomalia):
+                                        $is_flagged = $anomalia['is_flagged'] == 1;
+                                        $row_class = $is_flagged ? 'table-info' : ($anomalia['z_score'] > 3 ? 'table-danger' : 'table-warning');
+                                    ?>
+                                        <tr class="<?php echo $row_class; ?>" data-anomalia-id="<?php echo $anomalia['id']; ?>">
+                                            <td style="width: 100px; border: 1px solid #ddd; padding: 8px;">
+                                                <?php echo date('d/m/Y', strtotime($anomalia['data'])); ?>
+                                            </td>
+                                            <td style="width: 120px; border: 1px solid #ddd; padding: 8px;"><strong><?php echo htmlspecialchars($anomalia['username']); ?></strong></td>
+                                            <td style="width: 100px; border: 1px solid #ddd; padding: 8px;"><?php echo htmlspecialchars($anomalia['targa_mezzo']); ?></td>
+                                            <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['km_percorsi']); ?></td>
+                                            <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['litri'], 2); ?></td>
+                                            <td style="width: 90px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['euro_spesi'], 2); ?>€</td>
+                                            <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['km_per_litro'], 2); ?></td>
+                                            <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: center;">
+                                                <span class="badge <?php echo $anomalia['z_score'] > 3 ? 'bg-danger' : 'bg-warning'; ?>">
+                                                    <?php echo number_format($anomalia['z_score'], 2); ?>
+                                                </span>
+                                            </td>
+                                            <td style="width: 100px; border: 1px solid #ddd; padding: 8px;">
+                                                <span class="badge bg-secondary" style="font-size: 0.7em;"><?php echo htmlspecialchars(str_replace(['CONSUMO_TROPPO_', 'KM_ZERO_CON_', 'MOLTI_KM_POCO_', 'PREZZO_CARBURANTE_'], ['', 'KM_ZERO_', 'MOLTI_KM_', 'PREZZO_'], $anomalia['tipo_anomalia'])); ?></span>
+                                            </td>
+                                            <td style="width: 100px; border: 1px solid #ddd; padding: 8px; text-align: center;">
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-primary btn-sm" onclick="dettaglioAnomalia(<?php echo $anomalia['id']; ?>)">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                    <?php if ($is_flagged): ?>
+                                                        <button class="btn btn-outline-success btn-sm" onclick="unflagAnomalia(<?php echo $anomalia['id']; ?>)" title="Marca come Risolto">
+                                                            <i class="bi bi-check-circle"></i>
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <button class="btn btn-outline-warning btn-sm" onclick="flagAnomalia(<?php echo $anomalia['id']; ?>)" title="Marca come Completato">
+                                                            <i class="bi bi-check"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
+                        <?php if (count($dati_anomalie) > 10): ?>
+                            <div class="card-footer text-center">
+                                <div class="btn-group">
+                                    <button class="btn btn-outline-primary" onclick="mostraTutteAnomalie()">
+                                        Mostra tutte le <?php echo count($dati_anomalie); ?> anomalie
+                                    </button>
+                                    <button class="btn btn-outline-success" onclick="esportaSoloAnomalie()">
+                                        <i class="bi bi-file-excel me-2"></i>Esporta Solo Anomalie
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>
-    </div>
     <?php endif; ?>
 
     <!-- Grafici -->
@@ -453,7 +505,7 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                 </div>
             </div>
         </div>
-        
+
         <!-- Distribuzione Consumi -->
         <div class="col-lg-6">
             <div class="card">
@@ -488,34 +540,44 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                     <th>Risparmio</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <?php 
-                                $pos = 1;
-                                foreach (array_slice($dati_utenti, 0, 5) as $utente): 
-                                    if ($utente['consumo_medio'] > 0):
-                                ?>
-                                <tr>
-                                    <td><?php echo $pos++; ?></td>
-                                    <td><?php echo htmlspecialchars($utente['username']); ?></td>
-                                    <td><?php echo htmlspecialchars($utente['targa_mezzo']); ?></td>
-                                    <td class="text-success fw-bold"><?php echo number_format($utente['consumo_medio'], 2); ?></td>
-                                    <td><?php echo number_format($utente['km_totali']); ?></td>
-                                    <td class="text-success">
-                                        <i class="bi bi-arrow-down me-1"></i>
-                                        <?php echo number_format(($utente['consumo_medio'] - 10) * $utente['litri_totali'] * 1.6, 0); ?>€
-                                    </td>
-                                </tr>
-                                <?php 
-                                    endif;
-                                endforeach; 
-                                ?>
+                            <tbody id="tabella-mezzi-body">
+                                <!-- Contenuto dinamico via AJAX -->
                             </tbody>
+                        </table>
+                        <script>
+                            function aggiornaTabellaMezzi() {
+                                const params = new URLSearchParams({
+                                    periodo: document.getElementById('periodo')?.value || '',
+                                    targa: document.getElementById('targa')?.value || '',
+                                    filiale: document.getElementById('filiale')?.value || '',
+                                    utente: document.getElementById('utente')?.value || ''
+                                });
+                                fetch('report_avanzato_mezzi_ajax.php?' + params.toString())
+                                    .then(r => r.text())
+                                    .then(html => {
+                                        // Prendi solo il tbody della tabella AJAX
+                                        const temp = document.createElement('div');
+                                        temp.innerHTML = html;
+                                        const rows = temp.querySelectorAll('tbody tr');
+                                        const tbody = document.getElementById('tabella-mezzi-body');
+                                        tbody.innerHTML = '';
+                                        rows.forEach(row => tbody.appendChild(row));
+                                    });
+                            }
+                            // Eventi su tutti i filtri
+                            ['periodo', 'targa', 'filiale', 'utente'].forEach(id => {
+                                const el = document.getElementById(id);
+                                if (el) el.addEventListener('change', aggiornaTabellaMezzi);
+                            });
+                            // Primo caricamento
+                            aggiornaTabellaMezzi();
+                        </script>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <!-- Peggiori Consumi -->
         <div class="col-lg-6">
             <div class="card">
@@ -535,24 +597,24 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php 
+                                <?php
                                 $media_generale = array_sum(array_column($dati_utenti, 'consumo_medio')) / count($dati_utenti);
-                                $utenti_peggiori = array_filter($dati_utenti, function($u) use ($media_generale) { 
-                                    return $u['consumo_medio'] > 0 && $u['consumo_medio'] < $media_generale * 0.8; 
+                                $utenti_peggiori = array_filter($dati_utenti, function ($u) use ($media_generale) {
+                                    return $u['consumo_medio'] > 0 && $u['consumo_medio'] < $media_generale * 0.8;
                                 });
-                                foreach (array_slice($utenti_peggiori, 0, 5) as $utente): 
+                                foreach (array_slice($utenti_peggiori, 0, 5) as $utente):
                                 ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($utente['username']); ?></td>
-                                    <td><?php echo htmlspecialchars($utente['targa_mezzo']); ?></td>
-                                    <td class="text-warning fw-bold"><?php echo number_format($utente['consumo_medio'], 2); ?></td>
-                                    <td class="text-danger">
-                                        <?php echo number_format((($media_generale - $utente['consumo_medio']) / $media_generale) * 100, 1); ?>%
-                                    </td>
-                                    <td class="text-danger">
-                                        +<?php echo number_format(($media_generale - $utente['consumo_medio']) * $utente['litri_totali'] * 1.6, 0); ?>€
-                                    </td>
-                                </tr>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($utente['username']); ?></td>
+                                        <td><?php echo htmlspecialchars($utente['targa_mezzo']); ?></td>
+                                        <td class="text-warning fw-bold"><?php echo number_format($utente['consumo_medio'], 2); ?></td>
+                                        <td class="text-danger">
+                                            <?php echo number_format((($media_generale - $utente['consumo_medio']) / $media_generale) * 100, 1); ?>%
+                                        </td>
+                                        <td class="text-danger">
+                                            +<?php echo number_format(($media_generale - $utente['consumo_medio']) * $utente['litri_totali'] * 1.6, 0); ?>€
+                                        </td>
+                                    </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
@@ -583,157 +645,241 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.1/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
 <script>
-// Dati per i grafici
-const datiAndamento = <?php echo json_encode($dati_andamento); ?>;
-const datiUtenti = <?php echo json_encode($dati_utenti); ?>;
-const datiAnomalieJs = <?php echo json_encode($dati_anomalie); ?>;
+    // Dati per i grafici
+    const datiAndamento = <?php echo json_encode($dati_andamento); ?>;
+    const datiUtenti = <?php echo json_encode($dati_utenti); ?>;
+    const datiAnomalieJs = <?php echo json_encode($dati_anomalie); ?>;
 
-// Grafico andamento consumi
-const ctxAndamento = document.getElementById('graficoAndamento').getContext('2d');
-new Chart(ctxAndamento, {
-    type: 'line',
-    data: {
-        labels: datiAndamento.map(d => d.mese),
-        datasets: [{
-            label: 'Consumo Medio (KM/L)',
-            data: datiAndamento.map(d => parseFloat(d.consumo_medio)),
-            borderColor: 'rgb(75, 192, 192)',
-            backgroundColor: 'rgba(75, 192, 192, 0.1)',
-            tension: 0.4
-        }, {
-            label: 'Costo Totale (€)',
-            data: datiAndamento.map(d => parseFloat(d.costo_totale)),
-            borderColor: 'rgb(255, 99, 132)',
-            backgroundColor: 'rgba(255, 99, 132, 0.1)',
-            yAxisID: 'y1',
-            tension: 0.4
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-            mode: 'index',
-            intersect: false,
+    // Grafico andamento consumi
+    const ctxAndamento = document.getElementById('graficoAndamento').getContext('2d');
+    new Chart(ctxAndamento, {
+        type: 'line',
+        data: {
+            labels: datiAndamento.map(d => d.mese),
+            datasets: [{
+                label: 'Consumo Medio (KM/L)',
+                data: datiAndamento.map(d => parseFloat(d.consumo_medio)),
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.4
+            }, {
+                label: 'Costo Totale (€)',
+                data: datiAndamento.map(d => parseFloat(d.costo_totale)),
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                yAxisID: 'y1',
+                tension: 0.4
+            }]
         },
-        scales: {
-            y: {
-                type: 'linear',
-                display: true,
-                position: 'left',
-                title: {
-                    display: true,
-                    text: 'KM per Litro'
-                }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
             },
-            y1: {
-                type: 'linear',
-                display: true,
-                position: 'right',
-                title: {
+            scales: {
+                y: {
+                    type: 'linear',
                     display: true,
-                    text: 'Costo (€)'
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'KM per Litro'
+                    }
                 },
-                grid: {
-                    drawOnChartArea: false,
-                }
-            }
-        }
-    }
-});
-
-// Grafico distribuzione consumi
-const ctxDistribuzione = document.getElementById('graficoDistribuzione').getContext('2d');
-const utentiTop = datiUtenti.slice(0, 10);
-new Chart(ctxDistribuzione, {
-    type: 'doughnut',
-    data: {
-        labels: utentiTop.map(u => `${u.username} (${u.targa_mezzo})`),
-        datasets: [{
-            data: utentiTop.map(u => parseFloat(u.km_totali)),
-            backgroundColor: [
-                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
-                '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF',
-                '#4BC0C0', '#FF6384'
-            ]
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-            },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return context.label + ': ' + 
-                               new Intl.NumberFormat().format(context.parsed) + ' km';
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Costo (€)'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
                     }
                 }
             }
         }
-    }
-});
+    });
 
-// Grafico pattern temporali
-const ctxPattern = document.getElementById('graficoPattern').getContext('2d');
-const anomaliePerGiorno = {};
-datiAnomalieJs.forEach(a => {
-    const giorno = new Date(a.data).getDay();
-    anomaliePerGiorno[giorno] = (anomaliePerGiorno[giorno] || 0) + 1;
-});
-
-const giorniSettimana = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
-new Chart(ctxPattern, {
-    type: 'bar',
-    data: {
-        labels: giorniSettimana,
-        datasets: [{
-            label: 'Anomalie per Giorno',
-            data: giorniSettimana.map((_, i) => anomaliePerGiorno[i] || 0),
-            backgroundColor: 'rgba(255, 99, 132, 0.8)',
-            borderColor: 'rgb(255, 99, 132)',
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true,
-                title: {
-                    display: true,
-                    text: 'Numero Anomalie'
+    // Grafico distribuzione consumi
+    const ctxDistribuzione = document.getElementById('graficoDistribuzione').getContext('2d');
+    const utentiTop = datiUtenti.slice(0, 10);
+    new Chart(ctxDistribuzione, {
+        type: 'doughnut',
+        data: {
+            labels: utentiTop.map(u => `${u.username} (${u.targa_mezzo})`),
+            datasets: [{
+                data: utentiTop.map(u => parseFloat(u.km_totali)),
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                    '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF',
+                    '#4BC0C0', '#FF6384'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' +
+                                new Intl.NumberFormat().format(context.parsed) + ' km';
+                        }
+                    }
                 }
             }
         }
-    }
-});
+    });
 
-// Funzioni JavaScript
-function dettaglioAnomalia(id) {
-    fetch(`api_anomalie.php?action=get_dettaglio&id=${id}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                mostraModalDettaglio(data.data);
-            } else {
-                alert('Errore: ' + data.error);
+    // Grafico pattern temporali
+    const ctxPattern = document.getElementById('graficoPattern').getContext('2d');
+    const anomaliePerGiorno = {};
+    datiAnomalieJs.forEach(a => {
+        const giorno = new Date(a.data).getDay();
+        anomaliePerGiorno[giorno] = (anomaliePerGiorno[giorno] || 0) + 1;
+    });
+
+    const giorniSettimana = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+    new Chart(ctxPattern, {
+        type: 'bar',
+        data: {
+            labels: giorniSettimana,
+            datasets: [{
+                label: 'Anomalie per Giorno',
+                data: giorniSettimana.map((_, i) => anomaliePerGiorno[i] || 0),
+                backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                borderColor: 'rgb(255, 99, 132)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Numero Anomalie'
+                    }
+                }
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Errore durante il caricamento dei dettagli');
-        });
-}
+        }
+    });
 
-function mostraModalDettaglio(dati) {
-    const modal = document.createElement('div');
-    modal.className = 'modal fade';
-    modal.innerHTML = `
+    // Funzioni JavaScript
+    function flagAnomalia(id) {
+        // Controlla se l'anomalia è già flaggata
+        const row = document.querySelector(`tr[data-anomalia-id="${id}"]`);
+        if (row && row.querySelector('.bi-check-circle')) {
+            alert('Questa anomalia è già stata marcata come completata!');
+            return;
+        }
+
+        if (confirm('Vuoi marcare questa registrazione come completata/verificata?')) {
+            // Mostra loading
+            if (row) {
+                row.style.opacity = '0.5';
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'flag_anomalia');
+            formData.append('id', id);
+            formData.append('tipo', 'ANOMALIA_VERIFICATA');
+            formData.append('note', prompt('Note aggiuntive (opzionale):') || '');
+
+            fetch('api_anomalie.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Ricarica la pagina per garantire coerenza strutturale
+                        location.reload();
+                    } else {
+                        alert('Errore: ' + data.error);
+                        if (row) {
+                            row.style.opacity = '1';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Errore durante la marcatura');
+                    if (row) {
+                        row.style.opacity = '1';
+                    }
+                });
+        }
+    }
+
+    function unflagAnomalia(id) {
+        if (confirm('Vuoi rimuovere la marcatura di completamento da questa anomalia?')) {
+            // Mostra loading
+            const row = document.querySelector(`tr[data-anomalia-id="${id}"]`);
+            if (row) {
+                row.style.opacity = '0.5';
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'unflag_anomalia');
+            formData.append('id', id);
+
+            fetch('api_anomalie.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Ricarica la pagina per garantire coerenza strutturale
+                        location.reload();
+                    } else {
+                        alert('Errore: ' + data.error);
+                        if (row) {
+                            row.style.opacity = '1';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Errore durante la rimozione della marcatura');
+                    if (row) {
+                        row.style.opacity = '1';
+                    }
+                });
+        }
+    }
+
+    function dettaglioAnomalia(id) {
+        fetch(`api_anomalie.php?action=get_dettaglio&id=${id}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostraModalDettaglio(data.data);
+                } else {
+                    alert('Errore: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Errore durante il caricamento dei dettagli');
+            });
+    }
+
+    function mostraModalDettaglio(dati) {
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.innerHTML = `
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
@@ -770,215 +916,90 @@ function mostraModalDettaglio(dati) {
                         </div>
                     </div>
                     ${dati.note ? `<div class="mt-3"><h6>Note:</h6><p class="bg-light p-2 rounded">${dati.note}</p></div>` : ''}
-                    ${dati.tipo_flag ? `
-                        <div class="alert alert-warning">
-                            <strong>Anomalia Flaggata:</strong> ${dati.tipo_flag}<br>
-                            <small>Da: ${dati.flaggato_da} il ${new Date(dati.data_flag).toLocaleString('it-IT')}</small>
-                            ${dati.note_flag ? `<br><strong>Note:</strong> ${dati.note_flag}` : ''}
-                        </div>
-                    ` : ''}
                 </div>
                 <div class="modal-footer">
-                    ${!dati.tipo_flag ? `
-                        <button class="btn btn-warning" onclick="flagAnomaliaModal(${dati.id})">
-                            <i class="bi bi-flag me-2"></i>Flagga Anomalia
-                        </button>
-                    ` : ''}
                     <button class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
                 </div>
             </div>
         </div>
     `;
-    
-    document.body.appendChild(modal);
-    const bootstrapModal = new bootstrap.Modal(modal);
-    bootstrapModal.show();
-    
-    modal.addEventListener('hidden.bs.modal', () => {
-        document.body.removeChild(modal);
-    });
-}
 
-function flagAnomalia(id) {
-    // Controlla se l'anomalia è già flaggata
-    const row = document.querySelector(`tr[data-anomalia-id="${id}"]`);
-    if (row && row.querySelector('.bi-flag-fill')) {
-        alert('Questa anomalia è già stata flaggata!');
-        return;
-    }
-    
-    if (confirm('Vuoi segnalare questa registrazione come anomalia verificata?')) {
-        // Mostra loading
-        if (row) {
-            row.style.opacity = '0.5';
-        }
-        
-        const formData = new FormData();
-        formData.append('action', 'flag_anomalia');
-        formData.append('id', id);
-        formData.append('tipo', 'ANOMALIA_VERIFICATA');
-        formData.append('note', prompt('Note aggiuntive (opzionale):') || '');
-        
-        fetch('api_anomalie.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Ricarica la pagina per garantire coerenza strutturale
-                location.reload();
-            } else {
-                alert('Errore: ' + data.error);
-                if (row) {
-                    row.style.opacity = '1';
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Errore durante la segnalazione');
-            if (row) {
-                row.style.opacity = '1';
-            }
+        document.body.appendChild(modal);
+        const bootstrapModal = new bootstrap.Modal(modal);
+        bootstrapModal.show();
+
+        modal.addEventListener('hidden.bs.modal', () => {
+            document.body.removeChild(modal);
         });
     }
-}
 
-function unflagAnomalia(id) {
-    if (confirm('Vuoi rimuovere il flag da questa anomalia?')) {
-        // Mostra loading
-        const row = document.querySelector(`tr[data-anomalia-id="${id}"]`);
-        if (row) {
-            row.style.opacity = '0.5';
-        }
-        
-        const formData = new FormData();
-        formData.append('action', 'unflag_anomalia');
-        formData.append('id', id);
-        
-        fetch('api_anomalie.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Ricarica la pagina per garantire coerenza strutturale
-                location.reload();
-            } else {
-                alert('Errore: ' + data.error);
-                if (row) {
-                    row.style.opacity = '1';
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Errore durante la rimozione del flag');
-            if (row) {
-                row.style.opacity = '1';
-            }
-        });
+    function mostraTutteAnomalie() {
+        window.location.href = 'report_avanzato.php?mostra_tutte=1';
     }
-}
 
-function flagAnomaliaModal(id) {
-    const note = prompt('Inserisci note per questa anomalia:') || '';
-    
-    const formData = new FormData();
-    formData.append('action', 'flag_anomalia');
-    formData.append('id', id);
-    formData.append('tipo', 'ANOMALIA_VERIFICATA');
-    formData.append('note', note);
-    
-    fetch('api_anomalie.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Anomalia flaggata con successo');
-            location.reload();
-        } else {
-            alert('Errore: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Errore durante la segnalazione');
-    });
-}
+    function esportaExcel() {
+        // Recupera i parametri di filtro attuali
+        const urlParams = new URLSearchParams(window.location.search);
+        const periodo = urlParams.get('periodo') || '12';
+        const targa = urlParams.get('targa') || '';
+        const filiale = urlParams.get('filiale') || '';
 
-function mostraTutteAnomalie() {
-    window.location.href = 'report_avanzato.php?mostra_tutte=1';
-}
+        // Mostra menu di scelta formato
+        const formato = confirm('Scegli il formato di esportazione:\n\nOK = Excel (.xlsx)\nAnnulla = CSV (.csv)') ? 'xlsx' : 'csv';
 
-function esportaExcel() {
-    // Recupera i parametri di filtro attuali
-    const urlParams = new URLSearchParams(window.location.search);
-    const periodo = urlParams.get('periodo') || '12';
-    const targa = urlParams.get('targa') || '';
-    const filiale = urlParams.get('filiale') || '';
-    
-    // Mostra menu di scelta formato
-    const formato = confirm('Scegli il formato di esportazione:\n\nOK = Excel (.xlsx)\nAnnulla = CSV (.csv)') ? 'xlsx' : 'csv';
-    
-    // Costruisci URL di export con filtri
-    const exportUrl = `export_report_excel.php?formato=${formato}&periodo=${periodo}&targa=${encodeURIComponent(targa)}&filiale=${encodeURIComponent(filiale)}`;
-    
-    // Mostra indicatore di caricamento
-    const btn = event.target;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-download me-2"></i>Esportazione...';
-    btn.disabled = true;
-    
-    // Crea link nascosto per download
-    const link = document.createElement('a');
-    link.href = exportUrl;
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Ripristina pulsante dopo 2 secondi
-    setTimeout(() => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    }, 2000);
-}
+        // Costruisci URL di export con filtri
+        const exportUrl = `export_report_excel.php?formato=${formato}&periodo=${periodo}&targa=${encodeURIComponent(targa)}&filiale=${encodeURIComponent(filiale)}`;
 
-function esportaSoloAnomalie() {
-    // Scegli il formato
-    const formato = confirm('Formato esportazione anomalie:\n\nOK = Excel (.xlsx)\nAnnulla = CSV (.csv)') ? 'xlsx' : 'csv';
-    
-    // Raccogli gli ID delle anomalie attualmente visualizzate
-    const anomalieIds = [];
-    datiAnomalieJs.forEach(a => anomalieIds.push(a.id));
-    
-    if (anomalieIds.length === 0) {
-        alert('Nessuna anomalia da esportare.');
-        return;
+        // Mostra indicatore di caricamento
+        const btn = event.target;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-download me-2"></i>Esportazione...';
+        btn.disabled = true;
+
+        // Crea link nascosto per download
+        const link = document.createElement('a');
+        link.href = exportUrl;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Ripristina pulsante dopo 2 secondi
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 2000);
     }
-    
-    // URL di export
-    const exportUrl = `export_anomalie.php?formato=${formato}&ids=${anomalieIds.join(',')}`;
-    
-    // Download
-    const link = document.createElement('a');
-    link.href = exportUrl;
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
 
-// Aggiorna automaticamente ogni 5 minuti
-setInterval(() => {
-    location.reload();
-}, 300000);
+    function esportaSoloAnomalie() {
+        // Scegli il formato
+        const formato = confirm('Formato esportazione anomalie:\n\nOK = Excel (.xlsx)\nAnnulla = CSV (.csv)') ? 'xlsx' : 'csv';
 
+        // Raccogli gli ID delle anomalie attualmente visualizzate
+        const anomalieIds = [];
+        datiAnomalieJs.forEach(a => anomalieIds.push(a.id));
+
+        if (anomalieIds.length === 0) {
+            alert('Nessuna anomalia da esportare.');
+            return;
+        }
+
+        // URL di export
+        const exportUrl = `export_anomalie.php?formato=${formato}&ids=${anomalieIds.join(',')}`;
+
+        // Download
+        const link = document.createElement('a');
+        link.href = exportUrl;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // Aggiorna automaticamente ogni 5 minuti
+    setInterval(() => {
+        location.reload();
+    }, 300000);
 </script>
 
 <?php include 'template/footer.php'; ?>

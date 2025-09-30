@@ -1,0 +1,36 @@
+{
+    "phpcs.enable": true,
+    "phpcs.executablePath": "./vendor/bin/phpcs",
+    "phpcs.standard": "./phpcs.xml",
+    "phpcs.autoConfigSearch": true,
+    "phpcs.showWarnings": true,
+    "phpcs.showSources": true,
+    "phpcbf.enable": true,
+    "phpcbf.executablePath": "./vendor/bin/phpcbf",
+    "phpcbf.standard": "./phpcs.xml",
+    "phpcbf.onsave": false,
+    "php.validate.enable": true,
+    "php.validate.run": "onSave",
+    "php.problems.enabled": true,
+    "php.problems.phpstan.enabled": false,
+    "php.problems.phpcs.enabled": true,
+    "php.problems.phpcs.standard": "./phpcs.xml",
+    "php.problems.phpcs.executable": "./vendor/bin/phpcs",
+    "php.format.codeStyle": "PSR-12",
+    "intelephense.diagnostics.enable": true,
+    "intelephense.diagnostics.run": "onSave",
+    "files.associations": {
+        "*.php": "php"
+    },
+    "editor.formatOnSave": false,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.phpcs": "explicit"
+    },
+    "[php]": {
+        "editor.defaultFormatter": "bmewburn.vscode-intelephense-client",
+        "editor.formatOnSave": true,
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4,
+        "editor.detectIndentation": false
+    }
+}

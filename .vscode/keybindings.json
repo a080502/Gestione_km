@@ -1,0 +1,14 @@
+[
+    {
+        "key": "ctrl+shift+c",
+        "command": "workbench.action.tasks.runTask",
+        "args": "PHPCS: Check current file",
+        "when": "editorTextFocus && resourceExtname == '.php'"
+    },
+    {
+        "key": "ctrl+shift+f",
+        "command": "workbench.action.tasks.runTask",
+        "args": "PHPCBF: Fix current file",
+        "when": "editorTextFocus && resourceExtname == '.php'"
+    }
+]

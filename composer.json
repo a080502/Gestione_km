@@ -1,5 +1,8 @@
 {
     "require": {
         "tecnickcom/tcpdf": "^6.8"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^4.0"
     }
 }
