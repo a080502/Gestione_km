@@ -81,13 +81,132 @@ if (isset($_GET['ids']) && !empty($_GET['ids'])) {
                 WHERE ABS(s.km_per_litro - m.media_consumo) / NULLIF(m.dev_std_consumo, 0) > 2.0";
     
     $result_ids = $conn->query($sql_ids);
+    if (!$result_ids) {
+        // Errore nella query - potrebbe essere un problema di compatibilità MySQL
+        error_log("Errore query anomalie: " . $conn->error);
+        ?>
+        <!DOCTYPE html>
+        <html lang="it">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Errore Analisi Anomalie</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+        </head>
+        <body class="bg-light">
+            <div class="container mt-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h4><i class="fas fa-exclamation-triangle me-2"></i>Errore nell'Analisi Anomalie</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="lead">Si è verificato un errore durante l'analisi delle anomalie di consumo carburante.</p>
+                                <p>Possibili cause:</p>
+                                <ul>
+                                    <li>Dati insufficienti per l'analisi statistica</li>
+                                    <li>Problema temporaneo con il database</li>
+                                    <li>Versione MySQL non compatibile con le query avanzate</li>
+                                </ul>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                                    <a href="dashboard_bi.php" class="btn btn-primary">
+                                        <i class="fas fa-chart-bar me-2"></i>Dashboard
+                                    </a>
+                                    <a href="visualizza.php" class="btn btn-outline-secondary">
+                                        <i class="fas fa-table me-2"></i>Visualizza Dati
+                                    </a>
+                                    <a href="javascript:history.back()" class="btn btn-outline-secondary">
+                                        <i class="fas fa-arrow-left me-2"></i>Indietro
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        <?php
+        exit();
+    }
+    
     while ($row = $result_ids->fetch_assoc()) {
         $ids_anomalie[] = $row['id'];
     }
 }
 
 if (empty($ids_anomalie)) {
-    die('Nessuna anomalia trovata per l\'esportazione.');
+    // Nessuna anomalia trovata - mostra una pagina informativa
+    ?>
+    <!DOCTYPE html>
+    <html lang="it">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Nessuna Anomalia da Esportare</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+        <style>
+            .info-container {
+                min-height: 80vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .info-card {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-radius: 15px;
+                box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            }
+            .info-icon {
+                font-size: 4rem;
+                margin-bottom: 1rem;
+                opacity: 0.8;
+            }
+        </style>
+    </head>
+    <body class="bg-light">
+        <div class="container info-container">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card info-card">
+                        <div class="card-body text-center p-5">
+                            <i class="fas fa-check-circle info-icon"></i>
+                            <h2 class="card-title mb-4">Nessuna Anomalia Rilevata</h2>
+                            <p class="card-text lead mb-4">
+                                Ottima notizia! Non sono state trovate anomalie nei dati di consumo carburante 
+                                degli ultimi 12 mesi.
+                            </p>
+                            <p class="card-text mb-4">
+                                Il sistema ha analizzato i consumi di tutti i veicoli e non ha rilevato 
+                                variazioni significative rispetto ai pattern di consumo normali.
+                            </p>
+                            <div class="d-grid gap-2">
+                                <a href="dashboard_bi.php" class="btn btn-light btn-lg">
+                                    <i class="fas fa-chart-bar me-2"></i>
+                                    Vai alla Dashboard
+                                </a>
+                                <a href="visualizza.php" class="btn btn-outline-light">
+                                    <i class="fas fa-table me-2"></i>
+                                    Visualizza Tutti i Dati
+                                </a>
+                                <a href="javascript:history.back()" class="btn btn-outline-light">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    Torna Indietro
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit();
 }
 
 $anomalie_result = getAnomaliePerId($conn, $ids_anomalie);
