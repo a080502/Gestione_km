@@ -10,7 +10,7 @@ $page_title = "Report Avanzato Antifrode";
 $page_description = "Analisi dettagliata consumi e identificazione anomalie";
 $require_auth = true;
 $require_config = true;
-$additional_head = '<link rel="stylesheet" href="css/report_avanzato.css">';
+$additional_head = '<link rel="stylesheet" href="css/report_avanzato.css?v=' . time() . '">';
 
 // Avvia sessione e include configurazione
 session_start();
