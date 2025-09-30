@@ -28,6 +28,19 @@ if ($livello > 2) {
     exit();
 }
 
+// Leggi filtri dai parametri GET
+$filters = [
+    'year' => $_GET['year'] ?? date('Y'),
+    'month' => $_GET['month'] ?? date('m'), // Se vuoto, considera tutto l'anno
+    'filiale' => $_GET['filiale'] ?? null,
+    'targa' => $_GET['targa'] ?? null
+];
+
+// Se month è stringa vuota, convertilo in null per indicare "tutto l'anno"
+if ($filters['month'] === '') {
+    $filters['month'] = null;
+}
+
 /**
  * Classe per il calcolo dei KPI e analytics
  */
@@ -37,59 +50,83 @@ class DashboardKPIEngine {
     private $filiale;
     private $divisione;
     private $username;
+    private $filters;
 
-    public function __construct($conn, $livello, $filiale = null, $divisione = null, $username = null) {
+    public function __construct($conn, $livello, $filiale = null, $divisione = null, $username = null, $filters = []) {
         $this->conn = $conn;
         $this->livello = $livello;
         $this->filiale = $filiale;
         $this->divisione = $divisione;
         $this->username = $username;
+        $this->filters = $filters;
     }
 
     /**
-     * Calcola i KPI principali per il mese corrente
+     * Calcola i KPI principali per il periodo specificato
      */
     public function calculateMainKPIs() {
-        $currentMonth = date('Y-m');
-        $previousMonth = date('Y-m', strtotime('-1 month'));
+        // Usa i filtri se disponibili, altrimenti mese corrente
+        $year = $this->filters['year'] ?? date('Y');
+        $month = $this->filters['month'] ?? date('m');
+        
+        $currentPeriod = $year . '-' . $month;
+        $previousPeriod = date('Y-m', strtotime($currentPeriod . '-01 -1 month'));
         
         return [
-            'totalKmMonth' => $this->getTotalKmMonth($currentMonth),
-            'avgConsumption' => $this->getAverageConsumption($currentMonth),
-            'targetAchievement' => $this->getTargetAchievement($currentMonth),
-            'totalCostMonth' => $this->getTotalCostMonth($currentMonth),
+            'totalKmMonth' => $this->getTotalKmPeriod($currentPeriod),
+            'avgConsumption' => $this->getAverageConsumption($currentPeriod),
+            'targetAchievement' => $this->getTargetAchievement($currentPeriod),
+            'totalCostMonth' => $this->getTotalCostPeriod($currentPeriod),
             
-            // Trend rispetto al mese precedente
-            'kmTrendPercent' => $this->getKmTrend($currentMonth, $previousMonth),
-            'consumptionTrendPercent' => $this->getConsumptionTrend($currentMonth, $previousMonth),
-            'targetTrendPercent' => $this->getTargetTrend($currentMonth, $previousMonth),
-            'costTrendPercent' => $this->getCostTrend($currentMonth, $previousMonth)
+            // Trend rispetto al periodo precedente
+            'kmTrendPercent' => $this->getKmTrend($currentPeriod, $previousPeriod),
+            'consumptionTrendPercent' => $this->getConsumptionTrend($currentPeriod, $previousPeriod),
+            'targetTrendPercent' => $this->getTargetTrend($currentPeriod, $previousPeriod),
+            'costTrendPercent' => $this->getCostTrend($currentPeriod, $previousPeriod)
         ];
     }
 
     /**
-     * Calcola il totale chilometri per il mese specificato
+     * Calcola il totale chilometri per il periodo specificato
      */
-    private function getTotalKmMonth($month) {
-        $startDate = $month . '-01';
-        $endDate = date('Y-m-t', strtotime($startDate));
+    private function getTotalKmPeriod($period) {
+        if ($this->filters['month'] ?? null) {
+            // Periodo specifico (anno-mese)
+            $startDate = $period . '-01';
+            $endDate = date('Y-m-t', strtotime($startDate));
+        } else {
+            // Tutto l'anno
+            $year = $this->filters['year'] ?? date('Y');
+            $startDate = $year . '-01-01';
+            $endDate = $year . '-12-31';
+        }
 
         $sql = "SELECT SUM(chilometri_finali - chilometri_iniziali) as total_km 
                 FROM chilometri 
                 WHERE data BETWEEN ? AND ?";
         
-        if ($this->livello > 1) {
+        // Filtri aggiuntivi
+        $params = [$startDate, $endDate];
+        $types = "ss";
+        
+        if ($this->filters['filiale'] ?? null) {
             $sql .= " AND filiale = ?";
+            $params[] = $this->filters['filiale'];
+            $types .= "s";
+        } elseif ($this->livello > 1) {
+            $sql .= " AND filiale = ?";
+            $params[] = $this->filiale;
+            $types .= "s";
+        }
+        
+        if ($this->filters['targa'] ?? null) {
+            $sql .= " AND targa_mezzo = ?";
+            $params[] = $this->filters['targa'];
+            $types .= "s";
         }
         
         $stmt = $this->conn->prepare($sql);
-        
-        if ($this->livello > 1) {
-            $stmt->bind_param("sss", $startDate, $endDate, $this->filiale);
-        } else {
-            $stmt->bind_param("ss", $startDate, $endDate);
-        }
-        
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         
@@ -145,7 +182,7 @@ class DashboardKPIEngine {
         $monthNum = date('n', strtotime($month . '-01'));
         
         // Calcola km effettivi
-        $actualKm = $this->getTotalKmMonth($month);
+        $actualKm = $this->getTotalKmPeriod($month);
         
         // Calcola target proporzionale al mese
         $sql = "SELECT AVG(target_chilometri) as avg_target 
@@ -179,11 +216,19 @@ class DashboardKPIEngine {
     }
 
     /**
-     * Calcola il costo totale per il mese
+     * Calcola il costo totale per il periodo
      */
-    private function getTotalCostMonth($month) {
-        $startDate = $month . '-01';
-        $endDate = date('Y-m-t', strtotime($startDate));
+    private function getTotalCostPeriod($period) {
+        if ($this->filters['month'] ?? null) {
+            // Periodo specifico (anno-mese)
+            $startDate = $period . '-01';
+            $endDate = date('Y-m-t', strtotime($startDate));
+        } else {
+            // Tutto l'anno
+            $year = $this->filters['year'] ?? date('Y');
+            $startDate = $year . '-01-01';
+            $endDate = $year . '-12-31';
+        }
 
         // Costi carburante
         $sql1 = "SELECT SUM(euro_spesi) as fuel_cost 
@@ -191,38 +236,65 @@ class DashboardKPIEngine {
                  WHERE data BETWEEN ? AND ?
                      AND euro_spesi IS NOT NULL";
         
-        if ($this->livello > 1) {
+        // Filtri aggiuntivi per carburante
+        $params1 = [$startDate, $endDate];
+        $types1 = "ss";
+        
+        if ($this->filters['filiale'] ?? null) {
             $sql1 .= " AND filiale = ?";
+            $params1[] = $this->filters['filiale'];
+            $types1 .= "s";
+        } elseif ($this->livello > 1) {
+            $sql1 .= " AND filiale = ?";
+            $params1[] = $this->filiale;
+            $types1 .= "s";
+        }
+        
+        if ($this->filters['targa'] ?? null) {
+            $sql1 .= " AND targa_mezzo = ?";
+            $params1[] = $this->filters['targa'];
+            $types1 .= "s";
         }
         
         $stmt1 = $this->conn->prepare($sql1);
-        
-        if ($this->livello > 1) {
-            $stmt1->bind_param("sss", $startDate, $endDate, $this->filiale);
-        } else {
-            $stmt1->bind_param("ss", $startDate, $endDate);
-        }
-        
+        $stmt1->bind_param($types1, ...$params1);
         $stmt1->execute();
         $fuelCost = floatval($stmt1->get_result()->fetch_assoc()['fuel_cost'] ?? 0);
         
         // Calcola costi extra
-        $sql2 = "SELECT SUM(importo) as extra_cost 
-                 FROM costi_extra 
-                 WHERE data BETWEEN ? AND ?";
+        $sql2 = "SELECT SUM(ce.costo) as extra_cost 
+                 FROM costo_extra ce";
         
-        if ($this->livello > 1) {
-            $sql2 .= " AND filiale = ?";
+        if ($this->filters['filiale'] ?? null || $this->filters['targa'] ?? null || $this->livello > 1) {
+            $sql2 .= " JOIN utenti u ON ce.targa_mezzo = u.targa_mezzo
+                       WHERE DATE(ce.time_stamp) BETWEEN ? AND ?";
+            
+            $params2 = [$startDate, $endDate];
+            $types2 = "ss";
+            
+            if ($this->filters['filiale'] ?? null) {
+                $sql2 .= " AND u.filiale = ?";
+                $params2[] = $this->filters['filiale'];
+                $types2 .= "s";
+            } elseif ($this->livello > 1) {
+                $sql2 .= " AND u.filiale = ?";
+                $params2[] = $this->filiale;
+                $types2 .= "s";
+            }
+            
+            if ($this->filters['targa'] ?? null) {
+                $sql2 .= " AND ce.targa_mezzo = ?";
+                $params2[] = $this->filters['targa'];
+                $types2 .= "s";
+            }
+        } else {
+            $sql2 .= " WHERE DATE(ce.time_stamp) BETWEEN ? AND ?";
+            $params2 = [$startDate, $endDate];
+            $types2 = "ss";
         }
         
         $stmt2 = $this->conn->prepare($sql2);
-        
-        if ($this->livello > 1) {
-            $stmt2->bind_param("sss", $startDate, $endDate, $this->filiale);
-        } else {
-            $stmt2->bind_param("ss", $startDate, $endDate);
-        }
-        
+        $stmt2->bind_param($types2, ...$params2);
         $stmt2->execute();
         $extraCost = floatval($stmt2->get_result()->fetch_assoc()['extra_cost'] ?? 0);
         
@@ -233,8 +305,8 @@ class DashboardKPIEngine {
      * Calcola il trend dei chilometri rispetto al mese precedente
      */
     private function getKmTrend($currentMonth, $previousMonth) {
-        $currentKm = $this->getTotalKmMonth($currentMonth);
-        $previousKm = $this->getTotalKmMonth($previousMonth);
+        $currentKm = $this->getTotalKmPeriod($currentMonth);
+        $previousKm = $this->getTotalKmPeriod($previousMonth);
         
         if ($previousKm > 0) {
             return (($currentKm - $previousKm) / $previousKm) * 100;
@@ -275,8 +347,8 @@ class DashboardKPIEngine {
      * Calcola trend costi
      */
     private function getCostTrend($currentMonth, $previousMonth) {
-        $currentCost = $this->getTotalCostMonth($currentMonth);
-        $previousCost = $this->getTotalCostMonth($previousMonth);
+        $currentCost = $this->getTotalCostPeriod($currentMonth);
+        $previousCost = $this->getTotalCostPeriod($previousMonth);
         
         if ($previousCost > 0) {
             return (($currentCost - $previousCost) / $previousCost) * 100;
@@ -297,7 +369,7 @@ class DashboardKPIEngine {
             $date = date('Y-m', strtotime("-$i months"));
             $labels[] = date('M Y', strtotime($date . '-01'));
             
-            $actualKm = $this->getTotalKmMonth($date);
+            $actualKm = $this->getTotalKmPeriod($date);
             $actualData[] = $actualKm;
             
             // Calcola target mensile
@@ -448,6 +520,69 @@ class DashboardKPIEngine {
     }
 
     /**
+     * Ottiene tutte le filiali disponibili per l'utente
+     */
+    public function getAvailableFiliali() {
+        $sql = "SELECT DISTINCT filiale FROM utenti WHERE filiale IS NOT NULL AND filiale != '' ORDER BY filiale";
+        
+        if ($this->livello > 1) {
+            $sql = "SELECT DISTINCT filiale FROM utenti WHERE filiale = ? ORDER BY filiale";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param("s", $this->filiale);
+        } else {
+            $stmt = $this->conn->prepare($sql);
+        }
+        
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $filiali = [];
+        while ($row = $result->fetch_assoc()) {
+            $filiali[] = $row['filiale'];
+        }
+        
+        return $filiali;
+    }
+
+    /**
+     * Ottiene tutte le targhe disponibili per l'utente
+     */
+    public function getAvailableTarghe() {
+        $sql = "SELECT DISTINCT u.targa_mezzo, u.filiale 
+                FROM utenti u 
+                WHERE u.targa_mezzo IS NOT NULL AND u.targa_mezzo != '' AND u.targa_mezzo != '*'";
+        
+        if ($this->livello == 2) {
+            $sql .= " AND u.divisione = ?";
+        } elseif ($this->livello == 3) {
+            $sql .= " AND u.username = ?";
+        }
+        
+        $sql .= " ORDER BY u.targa_mezzo";
+        
+        $stmt = $this->conn->prepare($sql);
+        
+        if ($this->livello == 2) {
+            $stmt->bind_param("s", $this->divisione);
+        } elseif ($this->livello == 3) {
+            $stmt->bind_param("s", $this->username);
+        }
+        
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $targhe = [];
+        while ($row = $result->fetch_assoc()) {
+            $targhe[] = [
+                'targa' => $row['targa_mezzo'],
+                'filiale' => $row['filiale']
+            ];
+        }
+        
+        return $targhe;
+    }
+
+    /**
      * Dettagli veicoli per tabella dashboard
      */
     public function getVehicleDetails() {
@@ -481,10 +616,10 @@ class DashboardKPIEngine {
                     ) as consumo_medio,
                     ROUND(COALESCE(SUM(c.euro_spesi), 0), 2) as costi_totali,
                     CASE
-                        WHEN COALESCE(SUM(c.chilometri_finali - c.chilometri_iniziali), 0) >= COALESCE(t.target_chilometri / 12, 0) * 0.9 THEN '🟢 Ottimo'
-                        WHEN COALESCE(SUM(c.chilometri_finali - c.chilometri_iniziali), 0) >= COALESCE(t.target_chilometri / 12, 0) * 0.7 THEN '🟡 Buono'
-                        WHEN COALESCE(SUM(c.chilometri_finali - c.chilometri_iniziali), 0) > 0 THEN '🟠 Insufficiente'
-                        ELSE '🔴 Nessun dato'
+                        WHEN COALESCE(SUM(c.chilometri_finali - c.chilometri_iniziali), 0) >= COALESCE(t.target_chilometri / 12, 0) * 0.9 THEN 'Ottimo'
+                        WHEN COALESCE(SUM(c.chilometri_finali - c.chilometri_iniziali), 0) >= COALESCE(t.target_chilometri / 12, 0) * 0.7 THEN 'Buono'
+                        WHEN COALESCE(SUM(c.chilometri_finali - c.chilometri_iniziali), 0) > 0 THEN 'Insufficiente'
+                        ELSE 'Nessun dato'
                     END as status
                 FROM utenti u
                 LEFT JOIN chilometri c ON u.targa_mezzo = c.targa_mezzo
@@ -539,13 +674,14 @@ class DashboardKPIEngine {
 }
 
 try {
-    // Inizializza il motore KPI
+    // Inizializza il motore KPI con i filtri
     $kpiEngine = new DashboardKPIEngine(
         $conn, 
         $livello, 
         $utente_data['filiale'] ?? null,
         $utente_data['divisione'] ?? null,
-        $username
+        $username,
+        $filters
     );
 
     // Calcola tutti i dati necessari per la dashboard
@@ -557,8 +693,17 @@ try {
         ],
         'branchPerformance' => $kpiEngine->getBranchPerformanceData(),
         'vehicleDetails' => $kpiEngine->getVehicleDetails(),
-        'lastUpdate' => date('Y-m-d H:i:s')
+        'lastUpdate' => date('Y-m-d H:i:s'),
+        'appliedFilters' => $filters
     ];
+
+    // Aggiungi liste per i filtri se richiesto
+    if (isset($_GET['include_filters'])) {
+        $dashboardData['filterOptions'] = [
+            'filiali' => $kpiEngine->getAvailableFiliali(),
+            'targhe' => $kpiEngine->getAvailableTarghe()
+        ];
+    }
 
     // Aggiungi cache headers per performance
     header('Cache-Control: max-age=300'); // Cache per 5 minuti

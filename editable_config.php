@@ -1,13 +1,10 @@
 <?php
-// File di configurazione generato automaticamente.
+// Configurazione Database - Generata automaticamente dal Setup
+// Data: 2025-09-30 10:56:00
 
-return array (
-  'DB_HOST' => 'localhost',
-  'DB_USERNAME' => 'root',
-  'DB_PASSWORD' => '080502',
-  'DB_NAME' => 'chilometri',
-  'SITE_TITLE' => 'Gestione Km Mezzi',
-  'ITEMS_PER_PAGE' => 10,
-  'COMPANY_LOGO' => 'immagini/logo.png',
-  'COMPANY_NAME' => 'La Tua Azienda',
-);
+return [
+    'DB_HOST' => '127.0.0.1',
+    'DB_USERNAME' => 'dome',
+    'DB_PASSWORD' => 'a080502',
+    'DB_NAME' => 'chilometri'
+];

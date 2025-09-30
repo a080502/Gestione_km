@@ -119,6 +119,77 @@ if ($livello > 2) {
     <?php include 'include/menu.php'; ?>
 
     <div class="container-fluid">
+        <!-- Pannello Filtri -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">🔍 Filtri Dashboard</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label for="filterYear" class="form-label">Anno</label>
+                                <select class="form-select" id="filterYear">
+                                    <option value="2025" selected>2025</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2023">2023</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="filterMonth" class="form-label">Mese</label>
+                                <select class="form-select" id="filterMonth">
+                                    <option value="">Tutti i mesi</option>
+                                    <option value="01">Gennaio</option>
+                                    <option value="02">Febbraio</option>
+                                    <option value="03">Marzo</option>
+                                    <option value="04">Aprile</option>
+                                    <option value="05">Maggio</option>
+                                    <option value="06">Giugno</option>
+                                    <option value="07">Luglio</option>
+                                    <option value="08">Agosto</option>
+                                    <option value="09" selected>Settembre</option>
+                                    <option value="10">Ottobre</option>
+                                    <option value="11">Novembre</option>
+                                    <option value="12">Dicembre</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="filterFiliale" class="form-label">Filiale</label>
+                                <select class="form-select" id="filterFiliale">
+                                    <option value="">Tutte le filiali</option>
+                                    <!-- Popolato dinamicamente -->
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="filterTarga" class="form-label">Targa</label>
+                                <select class="form-select" id="filterTarga">
+                                    <option value="">Tutte le targhe</option>
+                                    <!-- Popolato dinamicamente -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button class="btn btn-primary" id="applyFilters">
+                                    <i class="bi bi-funnel"></i> Applica Filtri
+                                </button>
+                                <button class="btn btn-outline-secondary ms-2" id="resetFilters">
+                                    <i class="bi bi-arrow-clockwise"></i> Reset
+                                </button>
+                                <div class="float-end">
+                                    <small class="text-muted">
+                                        <i class="bi bi-info-circle"></i> 
+                                        I filtri influenzano sia i KPI che la tabella dettagli
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Alert Panel per KPI Critici -->
         <div class="row mb-4">
             <div class="col-12">
@@ -300,29 +371,102 @@ if ($livello > 2) {
             constructor() {
                 this.charts = {};
                 this.data = {};
+                this.filters = {
+                    year: '2025',
+                    month: '09',
+                    filiale: '',
+                    targa: ''
+                };
                 this.init();
             }
 
             async init() {
+                console.log('Dashboard initialization started');
+                await this.loadFilterOptions();
                 await this.loadData();
+                console.log('Data loaded, updating KPIs');
                 this.updateKPIs();
+                console.log('Initializing charts');
                 this.initCharts();
+                console.log('Updating vehicle details table');
+                this.updateVehicleDetailsTable();
+                console.log('Updating last refresh');
                 this.updateLastRefresh();
                 this.setupEventListeners();
                 
                 // Auto-refresh ogni 5 minuti
                 setInterval(() => this.refresh(), 300000);
+                console.log('Dashboard initialization completed');
             }
 
             async loadData() {
                 try {
                     // Carica dati KPI
-                    const response = await fetch('api/dashboard_data.php');
-                    this.data = await response.json();
+                    console.log('Caricamento dati dashboard...');
+                    const filterParams = this.buildFilterParams();
+                    const url = 'api/dashboard_data.php' + (filterParams ? '?' + filterParams : '');
+                    console.log('URL API:', url);
+                    
+                    const response = await fetch(url);
+                    console.log('Response status:', response.status);
+                    
+                    const text = await response.text();
+                    console.log('Response text length:', text.length);
+                    
+                    this.data = JSON.parse(text);
+                    console.log('Dati caricati:', this.data);
+                    console.log('Vehicle details count:', this.data.vehicleDetails ? this.data.vehicleDetails.length : 'undefined');
                 } catch (error) {
                     console.error('Errore caricamento dati:', error);
                     this.showAlert('Errore nel caricamento dei dati dashboard');
                 }
+            }
+
+            async loadFilterOptions() {
+                try {
+                    console.log('Caricamento opzioni filtri...');
+                    const response = await fetch('api/dashboard_data.php?include_filters=1');
+                    const data = await response.json();
+                    
+                    if (data.filterOptions) {
+                        this.populateFilterOptions(data.filterOptions);
+                    }
+                } catch (error) {
+                    console.error('Errore caricamento opzioni filtri:', error);
+                }
+            }
+
+            populateFilterOptions(options) {
+                // Popola filiali
+                const filialeSelect = document.getElementById('filterFiliale');
+                filialeSelect.innerHTML = '<option value="">Tutte le filiali</option>';
+                options.filiali.forEach(filiale => {
+                    const option = document.createElement('option');
+                    option.value = filiale;
+                    option.textContent = filiale;
+                    filialeSelect.appendChild(option);
+                });
+
+                // Popola targhe
+                const targaSelect = document.getElementById('filterTarga');
+                targaSelect.innerHTML = '<option value="">Tutte le targhe</option>';
+                options.targhe.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.targa;
+                    option.textContent = `${item.targa} (${item.filiale})`;
+                    targaSelect.appendChild(option);
+                });
+            }
+
+            buildFilterParams() {
+                const params = new URLSearchParams();
+                
+                if (this.filters.year) params.append('year', this.filters.year);
+                if (this.filters.month) params.append('month', this.filters.month);
+                if (this.filters.filiale) params.append('filiale', this.filters.filiale);
+                if (this.filters.targa) params.append('targa', this.filters.targa);
+                
+                return params.toString();
             }
 
             updateKPIs() {
@@ -500,19 +644,26 @@ if ($livello > 2) {
             }
 
             updateVehicleDetailsTable() {
+                console.log('updateVehicleDetailsTable chiamata');
                 const tbody = document.getElementById('vehicleDetailsBody');
+                console.log('tbody element:', tbody);
+                
                 if (!tbody) return;
 
                 const vehicles = this.data.vehicleDetails || [];
+                console.log('Vehicles data:', vehicles);
+                console.log('Number of vehicles:', vehicles.length);
                 
                 tbody.innerHTML = '';
 
                 if (vehicles.length === 0) {
+                    console.log('Nessun veicolo, inserendo messaggio placeholder');
                     tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Nessun veicolo trovato</td></tr>';
                     return;
                 }
 
-                vehicles.forEach(vehicle => {
+                vehicles.forEach((vehicle, index) => {
+                    console.log(`Processing vehicle ${index}:`, vehicle);
                     const row = document.createElement('tr');
                     
                     row.innerHTML = `
@@ -523,11 +674,13 @@ if ($livello > 2) {
                         <td>${vehicle.target_percentuale?.toFixed(1) || '0.0'}%</td>
                         <td>${vehicle.consumo_medio?.toFixed(1) || '-'} L/100km</td>
                         <td>€${vehicle.costi_totali?.toLocaleString() || '0'}</td>
-                        <td>${vehicle.status || '🔴 Nessun dato'}</td>
+                        <td>${vehicle.status || 'Nessun dato'}</td>
                     `;
                     
                     tbody.appendChild(row);
                 });
+                
+                console.log('Tabella aggiornata con', vehicles.length, 'righe');
             }
 
             checkAlerts(kpis) {
@@ -560,6 +713,15 @@ if ($livello > 2) {
                 document.getElementById('exportData').addEventListener('click', () => {
                     this.exportToExcel();
                 });
+
+                // Filter buttons
+                document.getElementById('applyFilters').addEventListener('click', () => {
+                    this.applyFilters();
+                });
+
+                document.getElementById('resetFilters').addEventListener('click', () => {
+                    this.resetFilters();
+                });
             }
 
             updateLastRefresh() {
@@ -579,6 +741,34 @@ if ($livello > 2) {
             showAlert(message) {
                 // Implementa sistema di notifiche
                 console.error(message);
+            }
+
+            async applyFilters() {
+                // Leggi i valori dai controlli
+                this.filters.year = document.getElementById('filterYear').value;
+                this.filters.month = document.getElementById('filterMonth').value;
+                this.filters.filiale = document.getElementById('filterFiliale').value;
+                this.filters.targa = document.getElementById('filterTarga').value;
+
+                console.log('Applicando filtri:', this.filters);
+
+                // Ricarica i dati
+                await this.loadData();
+                this.updateKPIs();
+                this.updateCharts();
+                this.updateVehicleDetailsTable();
+                this.updateLastRefresh();
+            }
+
+            resetFilters() {
+                // Reset ai valori predefiniti
+                document.getElementById('filterYear').value = '2025';
+                document.getElementById('filterMonth').value = '09';
+                document.getElementById('filterFiliale').value = '';
+                document.getElementById('filterTarga').value = '';
+
+                // Applica i filtri resettati
+                this.applyFilters();
             }
 
             exportToExcel() {

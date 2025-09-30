@@ -82,8 +82,16 @@ $sql_Mese_text = "
             c.username,
             c.Targa_mezzo,
             SUM(c.chilometri_finali - c.chilometri_iniziali) AS chilometri_percorsi,
-            SUM(c.litri_carburante) AS litri_totali,
-            SUM(c.euro_spesi) AS euro_totali,
+            SUM(CASE 
+                WHEN c.litri_carburante IS NOT NULL AND c.litri_carburante != '' AND c.litri_carburante != '0' 
+                THEN CAST(c.litri_carburante AS DECIMAL(10,2)) 
+                ELSE 0 
+            END) AS litri_totali,
+            SUM(CASE 
+                WHEN c.euro_spesi IS NOT NULL AND c.euro_spesi != '' 
+                THEN c.euro_spesi 
+                ELSE 0 
+            END) AS euro_totali,
             COUNT(*) AS conteggio_righe,
             (
                   SELECT sub.chilometri_finali
@@ -96,7 +104,7 @@ $sql_Mese_text = "
             ) AS ultimi_chilometri_Mese
       FROM chilometri AS c
       " . $where_sql . "
-      GROUP BY Mese, c.username, c.Targa_mezzo
+      GROUP BY DATE_FORMAT(c.data, '%Y-%m'), c.username, c.Targa_mezzo
       ORDER BY Mese DESC, c.username, c.Targa_mezzo"; // Ordina per Mese decrescente per mostrare i più recenti prima
 
 // --- Recupera gli anni disponibili per il filtro ---
