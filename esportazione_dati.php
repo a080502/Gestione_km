@@ -78,34 +78,54 @@ $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses
 // per quello specifico Mese/Utente/Targa.
 $sql_Mese_text = "
       SELECT
-            DATE_FORMAT(c.data, '%Y-%m') AS Mese,
-            c.username,
-            c.Targa_mezzo,
-            SUM(c.chilometri_finali - c.chilometri_iniziali) AS chilometri_percorsi,
-            SUM(CASE 
-                WHEN c.litri_carburante IS NOT NULL AND c.litri_carburante != '' AND c.litri_carburante != '0' 
-                THEN CAST(c.litri_carburante AS DECIMAL(10,2)) 
-                ELSE 0 
-            END) AS litri_totali,
-            SUM(CASE 
-                WHEN c.euro_spesi IS NOT NULL AND c.euro_spesi != '' 
-                THEN c.euro_spesi 
-                ELSE 0 
-            END) AS euro_totali,
-            COUNT(*) AS conteggio_righe,
-            (
-                  SELECT sub.chilometri_finali
-                  FROM chilometri AS sub
-                  WHERE sub.username = c.username
-                     AND sub.Targa_mezzo = c.Targa_mezzo
-                     AND DATE_FORMAT(sub.data, '%Y-%m') = DATE_FORMAT(c.data, '%Y-%m')
-                  ORDER BY sub.data DESC, sub.id DESC
-                  LIMIT 1
-            ) AS ultimi_chilometri_Mese
-      FROM chilometri AS c
-      " . $where_sql . "
-      GROUP BY DATE_FORMAT(c.data, '%Y-%m'), c.username, c.Targa_mezzo
-      ORDER BY Mese DESC, c.username, c.Targa_mezzo"; // Ordina per Mese decrescente per mostrare i più recenti prima
+            mese_data.Mese,
+            mese_data.username,
+            mese_data.Targa_mezzo,
+            mese_data.chilometri_percorsi,
+            mese_data.litri_totali,
+            mese_data.euro_totali,
+            mese_data.conteggio_righe,
+            ultimi_km.chilometri_finali AS ultimi_chilometri_Mese
+      FROM (
+            SELECT
+                  DATE_FORMAT(c.data, '%Y-%m') AS Mese,
+                  c.username,
+                  c.Targa_mezzo,
+                  SUM(c.chilometri_finali - c.chilometri_iniziali) AS chilometri_percorsi,
+                  SUM(CASE 
+                      WHEN c.litri_carburante IS NOT NULL AND c.litri_carburante != '' AND c.litri_carburante != '0' 
+                      THEN CAST(c.litri_carburante AS DECIMAL(10,2)) 
+                      ELSE 0 
+                  END) AS litri_totali,
+                  SUM(CASE 
+                      WHEN c.euro_spesi IS NOT NULL AND c.euro_spesi != '' 
+                      THEN c.euro_spesi 
+                      ELSE 0 
+                  END) AS euro_totali,
+                  COUNT(*) AS conteggio_righe
+            FROM chilometri AS c
+            " . $where_sql . "
+            GROUP BY DATE_FORMAT(c.data, '%Y-%m'), c.username, c.Targa_mezzo
+      ) AS mese_data
+      LEFT JOIN (
+            SELECT 
+                  DATE_FORMAT(c2.data, '%Y-%m') AS Mese,
+                  c2.username,
+                  c2.Targa_mezzo,
+                  c2.chilometri_finali,
+                  ROW_NUMBER() OVER (
+                        PARTITION BY DATE_FORMAT(c2.data, '%Y-%m'), c2.username, c2.Targa_mezzo 
+                        ORDER BY c2.data DESC, c2.id DESC
+                  ) as rn
+            FROM chilometri AS c2
+            " . $where_sql . "
+      ) AS ultimi_km ON (
+            mese_data.Mese = ultimi_km.Mese 
+            AND mese_data.username = ultimi_km.username 
+            AND mese_data.Targa_mezzo = ultimi_km.Targa_mezzo 
+            AND ultimi_km.rn = 1
+      )
+      ORDER BY mese_data.Mese DESC, mese_data.username, mese_data.Targa_mezzo"; // Ordina per Mese decrescente per mostrare i più recenti prima
 
 // --- Recupera gli anni disponibili per il filtro ---
 $sql_anni_text = "SELECT DISTINCT DATE_FORMAT(data, '%Y') AS anno FROM chilometri ";
@@ -470,7 +490,35 @@ function createPDF() {
             registrazioni: row.Registrazioni,
             km_finali_Mese: row.KmFinaliMese
         }));
-        window.location.href = 'create_pdf.php?rows=' + encodeURIComponent(JSON.stringify(rowsData)) + '&username=<?php echo urlencode($username); ?>';
+        
+        // Crea un form temporaneo per inviare i dati via POST
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'create_pdf.php';
+        form.target = '_blank'; // Apri in una nuova finestra/tab
+        
+        // Crea un campo nascosto per i dati
+        const rowsInput = document.createElement('input');
+        rowsInput.type = 'hidden';
+        rowsInput.name = 'rows';
+        rowsInput.value = JSON.stringify(rowsData);
+        
+        // Crea un campo nascosto per lo username
+        const usernameInput = document.createElement('input');
+        usernameInput.type = 'hidden';
+        usernameInput.name = 'username';
+        usernameInput.value = '<?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?>';
+        
+        // Aggiungi i campi al form
+        form.appendChild(rowsInput);
+        form.appendChild(usernameInput);
+        
+        // Aggiungi il form al body e invialo
+        document.body.appendChild(form);
+        form.submit();
+        
+        // Rimuovi il form dal DOM
+        document.body.removeChild(form);
     } else {
         showAlert('Seleziona almeno una riga per creare il PDF.', 'warning');
     }

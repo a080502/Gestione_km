@@ -368,8 +368,34 @@ $sql_utente_nome->close();
     function createPDF() {
         let selectedRows = getSelectedRowValues(); // Usa la nuova funzione helper
         if (selectedRows.length > 0) {
-            // Come per l'email, decidi quali dati inviare
-            window.location.href = 'create_pdf.php?rows=' + encodeURIComponent(JSON.stringify(selectedRows)) + '&username=<?php echo urlencode($username); ?>';
+            // Crea un form temporaneo per inviare i dati via POST
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'create_pdf.php';
+            form.target = '_blank'; // Apri in una nuova finestra/tab
+            
+            // Crea un campo nascosto per i dati
+            const rowsInput = document.createElement('input');
+            rowsInput.type = 'hidden';
+            rowsInput.name = 'rows';
+            rowsInput.value = JSON.stringify(selectedRows);
+            
+            // Crea un campo nascosto per lo username
+            const usernameInput = document.createElement('input');
+            usernameInput.type = 'hidden';
+            usernameInput.name = 'username';
+            usernameInput.value = '<?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?>';
+            
+            // Aggiungi i campi al form
+            form.appendChild(rowsInput);
+            form.appendChild(usernameInput);
+            
+            // Aggiungi il form al body e invialo
+            document.body.appendChild(form);
+            form.submit();
+            
+            // Rimuovi il form dal DOM
+            document.body.removeChild(form);
         } else {
             alert('Seleziona almeno una riga.');
         }

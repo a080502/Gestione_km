@@ -19,7 +19,16 @@ $Nome = isset($_SESSION['dati_utente']['Nome']) ? $_SESSION['dati_utente']['Nome
 $Cognome = isset($_SESSION['dati_utente']['Cognome']) ? $_SESSION['dati_utente']['Cognome'] : '';
 
 
-$rows_json = isset($_GET['rows']) ? $_GET['rows'] : '[]'; // Gestisce caso 'rows' non presente
+// Supporta sia GET che POST per la ricezione dei dati
+$rows_json = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rows'])) {
+    $rows_json = $_POST['rows'];
+} elseif (isset($_GET['rows'])) {
+    $rows_json = $_GET['rows'];
+} else {
+    $rows_json = '[]';
+}
+
 $rows_selezionate = json_decode($rows_json, true);
 
 if (empty($rows_selezionate)) {
