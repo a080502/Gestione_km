@@ -359,7 +359,7 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                             <thead class="table-danger">
                                 <tr>
                                     <th>Flag</th>
-                                    <th></th>Data</th>
+                                    <th>Data</th>
                                     <th>Utente</th>
                                     <th>Targa</th>
                                     <th>KM</th>
@@ -896,7 +896,6 @@ function updateAnomaliaRowVisually(id, isFlagged) {
             }
         }
     }
-}
 }
 
 function flagAnomaliaModal(id) {
