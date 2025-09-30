@@ -443,7 +443,7 @@ INSERT INTO `chilometri` (`data`, `chilometri_iniziali`, `chilometri_finali`, `n
 ('2025-04-10', 9090, 9280, '', '58.3', 106.77, NULL, 'giuseppe.ferrari', 'QR345ST', 'SP09', 'TRENTO STORAGE', 3, '2025-04-10 09:25:00'),
 ('2025-04-17', 9280, 9470, '', '55.8', 103.95, NULL, 'giuseppe.ferrari', 'QR345ST', 'SP09', 'TRENTO STORAGE', 3, '2025-04-17 14:15:00'),
 ('2025-04-24', 9470, 9660, '', '60.1', 108.78, NULL, 'giuseppe.ferrari', 'QR345ST', 'SP09', 'TRENTO STORAGE', 3, '2025-04-24 11:40:00'),
-('2025-04-31', 9660, 9850, '', '56.6', 104.88, NULL, 'giuseppe.ferrari', 'QR345ST', 'SP09', 'TRENTO STORAGE', 3, '2025-04-31 16:20:00'),
+('2025-04-30', 9660, 9850, '', '56.6', 104.88, NULL, 'giuseppe.ferrari', 'QR345ST', 'SP09', 'TRENTO STORAGE', 3, '2025-04-30 16:20:00'),
 ('2025-04-11', 7370, 7550, '', '46.2', 82.60, NULL, 'elena.conti', 'UV678WX', 'SP01', 'PIACENZA-SEDE', 2, '2025-04-11 08:30:00'),
 ('2025-04-18', 7550, 7730, '', '48.1', 87.52, NULL, 'elena.conti', 'UV678WX', 'SP01', 'PIACENZA-SEDE', 2, '2025-04-18 13:20:00'),
 ('2025-04-25', 7730, 7910, '', '50.8', 93.47, NULL, 'elena.conti', 'UV678WX', 'SP01', 'PIACENZA-SEDE', 2, '2025-04-25 15:45:00'),
