@@ -1,5 +1,102 @@
 /* CSS aggiuntivo per Report Avanzato Antifrode */
 
+/* Layout fisso per tabella anomalie */
+.table-fixed {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.table-fixed th:nth-child(1) { /* Flag */
+    width: 60px;
+    text-align: center;
+}
+
+.table-fixed th:nth-child(2) { /* Data */
+    width: 100px;
+}
+
+.table-fixed th:nth-child(3) { /* Utente */
+    width: 120px;
+}
+
+.table-fixed th:nth-child(4) { /* Targa */
+    width: 100px;
+}
+
+.table-fixed th:nth-child(5) { /* KM */
+    width: 80px;
+    text-align: right;
+}
+
+.table-fixed th:nth-child(6) { /* Litri */
+    width: 80px;
+    text-align: right;
+}
+
+.table-fixed th:nth-child(7) { /* € */
+    width: 90px;
+    text-align: right;
+}
+
+.table-fixed th:nth-child(8) { /* KM/L */
+    width: 80px;
+    text-align: right;
+}
+
+.table-fixed th:nth-child(9) { /* Z-Score */
+    width: 80px;
+    text-align: center;
+}
+
+.table-fixed th:nth-child(10) { /* Tipo Anomalia */
+    width: 140px;
+}
+
+.table-fixed th:nth-child(11) { /* Azioni */
+    width: 100px;
+    text-align: center;
+}
+
+/* Allineamento celle */
+.table-fixed td:nth-child(1) { /* Flag */
+    text-align: center;
+    padding: 0.5rem 0.25rem;
+}
+
+.table-fixed td:nth-child(5),
+.table-fixed td:nth-child(6),
+.table-fixed td:nth-child(7),
+.table-fixed td:nth-child(8) {
+    text-align: right;
+}
+
+.table-fixed td:nth-child(9) { /* Z-Score */
+    text-align: center;
+}
+
+.table-fixed td:nth-child(11) { /* Azioni */
+    text-align: center;
+}
+
+/* Flag icon */
+.flag-cell {
+    width: 60px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.flag-icon {
+    font-size: 1.2em;
+    color: #0dcaf0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.flag-icon:hover {
+    color: #0984e3;
+    transform: scale(1.1);
+}
+
 /* Miglioramenti per le carte statistiche */
 .card .display-4 {
     opacity: 0.8;

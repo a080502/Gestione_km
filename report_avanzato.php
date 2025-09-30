@@ -355,7 +355,7 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover table-fixed mb-0">
                             <thead class="table-danger">
                                 <tr>
                                     <th>Flag</th>
@@ -377,11 +377,11 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                     $row_class = $is_flagged ? 'table-info' : ($anomalia['z_score'] > 3 ? 'table-danger' : 'table-warning');
                                 ?>
                                 <tr class="<?php echo $row_class; ?>" data-anomalia-id="<?php echo $anomalia['id']; ?>">
-                                    <td class="text-center" style="width: 60px;">
+                                    <td class="flag-cell">
                                         <?php if ($is_flagged): ?>
-                                            <i class="bi bi-flag-fill text-primary" title="Anomalia flaggata da: <?php echo htmlspecialchars($anomalia['flaggato_da']); ?> il <?php echo date('d/m/Y H:i', strtotime($anomalia['data_flag'])); ?>"></i>
+                                            <i class="bi bi-flag-fill flag-icon" title="Anomalia flaggata da: <?php echo htmlspecialchars($anomalia['flaggato_da']); ?> il <?php echo date('d/m/Y H:i', strtotime($anomalia['data_flag'])); ?>"></i>
                                         <?php else: ?>
-                                            <span class="text-muted">-</span>
+                                            <span class="text-muted" style="font-size: 1.2em;">-</span>
                                         <?php endif; ?>
                                     </td>
                                     <td>
@@ -871,7 +871,7 @@ function updateAnomaliaRowVisually(id, isFlagged) {
         if (isFlagged) {
             // Aggiorna per anomalia flaggata
             row.className = 'table-info';
-            flagCell.innerHTML = '<i class="bi bi-flag-fill text-primary" title="Anomalia flaggata"></i>';
+            flagCell.innerHTML = '<i class="bi bi-flag-fill flag-icon" title="Anomalia flaggata"></i>';
             
             // Cambia il pulsante in unflag
             const flagButton = actionCell.querySelector('.btn-outline-warning');
@@ -884,7 +884,7 @@ function updateAnomaliaRowVisually(id, isFlagged) {
         } else {
             // Aggiorna per anomalia non flaggata
             row.className = 'table-warning'; // o 'table-danger' a seconda del z-score
-            flagCell.innerHTML = '<span class="text-muted">-</span>';
+            flagCell.innerHTML = '<span class="text-muted" style="font-size: 1.2em;">-</span>';
             
             // Cambia il pulsante in flag
             const unflagButton = actionCell.querySelector('.btn-outline-success');
