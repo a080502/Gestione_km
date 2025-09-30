@@ -22,6 +22,38 @@
     border-color: rgba(255, 193, 7, 0.2) !important;
 }
 
+.table-info td {
+    background-color: rgba(13, 202, 240, 0.1) !important;
+    border-color: rgba(13, 202, 240, 0.2) !important;
+    position: relative;
+}
+
+/* Stile per righe flaggate */
+.table-info td:first-child {
+    border-left: 4px solid #0dcaf0 !important;
+}
+
+.table-info::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(135deg, #0dcaf0 0%, #0984e3 100%);
+}
+
+/* Animazione per flag */
+.bi-flag-fill {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
 /* Badge personalizzati */
 .badge.bg-secondary {
     font-size: 0.75em;

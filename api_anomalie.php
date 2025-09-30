@@ -36,6 +36,9 @@ switch ($action) {
     case 'flag_anomalia':
         flagAnomalia();
         break;
+    case 'unflag_anomalia':
+        unflagAnomalia();
+        break;
     case 'get_dettaglio':
         getDettaglioAnomalia();
         break;
@@ -104,6 +107,44 @@ function flagAnomalia() {
     } else {
         http_response_code(500);
         echo json_encode(['error' => 'Errore durante il salvataggio']);
+    }
+}
+
+function unflagAnomalia() {
+    global $conn;
+    
+    $id_registrazione = intval($_POST['id'] ?? 0);
+    
+    if ($id_registrazione <= 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'ID registrazione non valido']);
+        return;
+    }
+    
+    // Verifica che la registrazione esista e sia flaggata
+    $stmt = $conn->prepare("SELECT af.id FROM anomalie_flaggate af WHERE af.id_registrazione = ?");
+    $stmt->bind_param("i", $id_registrazione);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 0) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Anomalia non flaggata o non trovata']);
+        return;
+    }
+    
+    // Rimuovi il flag
+    $stmt = $conn->prepare("DELETE FROM anomalie_flaggate WHERE id_registrazione = ?");
+    $stmt->bind_param("i", $id_registrazione);
+    
+    if ($stmt->execute()) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'Flag anomalia rimosso con successo'
+        ]);
+    } else {
+        http_response_code(500);
+        echo json_encode(['error' => 'Errore durante la rimozione del flag']);
     }
 }
 

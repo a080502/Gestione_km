@@ -136,9 +136,17 @@ function identificaAnomalieConsumo($conn, $soglia_deviazione = 2.0) {
                     WHEN s.euro_spesi / NULLIF(s.litri, 0) > 3.0 THEN 'PREZZO_CARBURANTE_ALTO'
                     WHEN s.euro_spesi / NULLIF(s.litri, 0) < 1.0 THEN 'PREZZO_CARBURANTE_BASSO'
                     ELSE 'OK'
-                END as tipo_anomalia
+                END as tipo_anomalia,
+                af.id as flag_id,
+                af.tipo_flag,
+                af.note as note_flag,
+                af.flaggato_da,
+                af.data_flag,
+                af.risolto,
+                CASE WHEN af.id IS NOT NULL THEN 1 ELSE 0 END as is_flagged
             FROM stats s
             JOIN medie m ON s.targa_mezzo = m.targa_mezzo
+            LEFT JOIN anomalie_flaggate af ON s.id = af.id_registrazione
             WHERE ABS(s.km_per_litro - m.media_consumo) / NULLIF(m.dev_std_consumo, 0) > ?
             OR (s.km_percorsi = 0 AND s.litri > 0)
             OR (s.km_percorsi > 1000 AND s.litri < 10)
@@ -363,9 +371,17 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach (array_slice($dati_anomalie, 0, 10) as $anomalia): ?>
-                                <tr class="<?php echo $anomalia['z_score'] > 3 ? 'table-danger' : 'table-warning'; ?>">
-                                    <td><?php echo date('d/m/Y', strtotime($anomalia['data'])); ?></td>
+                                <?php foreach (array_slice($dati_anomalie, 0, 10) as $anomalia): 
+                                    $is_flagged = $anomalia['is_flagged'] == 1;
+                                    $row_class = $is_flagged ? 'table-info' : ($anomalia['z_score'] > 3 ? 'table-danger' : 'table-warning');
+                                ?>
+                                <tr class="<?php echo $row_class; ?>" data-anomalia-id="<?php echo $anomalia['id']; ?>">
+                                    <td>
+                                        <?php if ($is_flagged): ?>
+                                            <i class="bi bi-flag-fill text-primary me-1" title="Anomalia flaggata"></i>
+                                        <?php endif; ?>
+                                        <?php echo date('d/m/Y', strtotime($anomalia['data'])); ?>
+                                    </td>
                                     <td><strong><?php echo htmlspecialchars($anomalia['username']); ?></strong></td>
                                     <td><?php echo htmlspecialchars($anomalia['targa_mezzo']); ?></td>
                                     <td><?php echo number_format($anomalia['km_percorsi']); ?></td>
@@ -379,15 +395,27 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                     </td>
                                     <td>
                                         <span class="badge bg-secondary"><?php echo htmlspecialchars($anomalia['tipo_anomalia']); ?></span>
+                                        <?php if ($is_flagged): ?>
+                                            <br><small class="text-muted">
+                                                Flaggata da: <?php echo htmlspecialchars($anomalia['flaggato_da']); ?>
+                                                <br>il <?php echo date('d/m/Y H:i', strtotime($anomalia['data_flag'])); ?>
+                                            </small>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                             <button class="btn btn-outline-primary btn-sm" onclick="dettaglioAnomalia(<?php echo $anomalia['id']; ?>)">
                                                 <i class="bi bi-eye"></i>
                                             </button>
-                                            <button class="btn btn-outline-warning btn-sm" onclick="flagAnomalia(<?php echo $anomalia['id']; ?>)">
-                                                <i class="bi bi-flag"></i>
-                                            </button>
+                                            <?php if ($is_flagged): ?>
+                                                <button class="btn btn-outline-success btn-sm" onclick="unflagAnomalia(<?php echo $anomalia['id']; ?>)" title="Annulla Flag">
+                                                    <i class="bi bi-flag-slash"></i>
+                                                </button>
+                                            <?php else: ?>
+                                                <button class="btn btn-outline-warning btn-sm" onclick="flagAnomalia(<?php echo $anomalia['id']; ?>)" title="Flagga Anomalia">
+                                                    <i class="bi bi-flag"></i>
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -788,7 +816,8 @@ function flagAnomalia(id) {
         .then(data => {
             if (data.success) {
                 alert('Anomalia flaggata con successo');
-                location.reload();
+                // Aggiorna visivamente la riga senza ricaricare la pagina
+                updateAnomaliaRowVisually(id, true);
             } else {
                 alert('Errore: ' + data.error);
             }
@@ -797,6 +826,63 @@ function flagAnomalia(id) {
             console.error('Error:', error);
             alert('Errore durante la segnalazione');
         });
+    }
+}
+
+function unflagAnomalia(id) {
+    if (confirm('Vuoi rimuovere il flag da questa anomalia?')) {
+        const formData = new FormData();
+        formData.append('action', 'unflag_anomalia');
+        formData.append('id', id);
+        
+        fetch('api_anomalie.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Flag anomalia rimosso con successo');
+                // Aggiorna visivamente la riga senza ricaricare la pagina
+                updateAnomaliaRowVisually(id, false);
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Errore durante la rimozione del flag');
+        });
+    }
+}
+
+function updateAnomaliaRowVisually(id, isFlagged) {
+    const row = document.querySelector(`tr[data-anomalia-id="${id}"]`);
+    if (row) {
+        if (isFlagged) {
+            // Aggiorna per anomalia flaggata
+            row.className = 'table-info';
+            const firstTd = row.querySelector('td:first-child');
+            if (!firstTd.querySelector('.bi-flag-fill')) {
+                firstTd.innerHTML = '<i class="bi bi-flag-fill text-primary me-1" title="Anomalia flaggata"></i>' + firstTd.innerHTML;
+            }
+        } else {
+            // Aggiorna per anomalia non flaggata
+            row.className = 'table-warning'; // o 'table-danger' a seconda del z-score
+            const flagIcon = row.querySelector('.bi-flag-fill');
+            if (flagIcon) {
+                flagIcon.remove();
+            }
+            // Aggiorna anche il pulsante
+            const actionCell = row.querySelector('td:last-child');
+            const flagButton = actionCell.querySelector('.btn-outline-success');
+            if (flagButton) {
+                flagButton.className = 'btn btn-outline-warning btn-sm';
+                flagButton.innerHTML = '<i class="bi bi-flag"></i>';
+                flagButton.title = 'Flagga Anomalia';
+                flagButton.onclick = () => flagAnomalia(id);
+            }
+        }
     }
 }
 
