@@ -641,6 +641,7 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                 <option value="6" <?php echo $filtro_periodo == '6' ? 'selected' : ''; ?>>6 mesi</option>
                                 <option value="12" <?php echo $filtro_periodo == '12' ? 'selected' : ''; ?>>12 mesi</option>
                                 <option value="24" <?php echo $filtro_periodo == '24' ? 'selected' : ''; ?>>24 mesi</option>
+                                <option value="36" <?php echo $filtro_periodo == '36' ? 'selected' : ''; ?>>36 mesi</option>
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -744,18 +745,18 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                                     <th class="col-utente">👤<br>Utente</th>
                                     <th class="col-targa">🚗<br>Targa</th>
                                     <th class="col-filiale">🏢<br>Filiale</th>
-                                    <th class="col-km">📏<br>KM<br>Percorsi</th>
-                                    <th class="col-carburante">⛽💰💲<br>Litri<br>Euro<br>€/L</th>
-                                    <th class="col-consumo">📊<br>Consumo<br>KM/L</th>
-                                    <th class="col-zscore">📈<br>Z-Score<br>Deviazione</th>
-                                    <th class="col-tipo">⚠️<br>Tipo<br>Anomalia</th>
-                                    <th class="col-flag-id">🏷️<br>Flag<br>ID</th>
-                                    <th class="col-flag-tipo">🔖<br>Tipo<br>Flag</th>
-                                    <th class="col-flag-note">📝<br>Note<br>Flag</th>
-                                    <th class="col-flaggato-da">👮<br>Flaggato<br>Da</th>
-                                    <th class="col-data-flag">📅<br>Data<br>Flag</th>
-                                    <th class="col-risolto">✅<br>Stato<br>Risoluzione</th>
-                                    <th class="col-azioni">⚙️<br>Azioni<br>Disponibili</th>
+                                    <th class="col-km">📏<br>KM-Percorsi</th>
+                                    <th class="col-carburante">⛽💰💲<br>Litri-Euro-€/L</th>
+                                    <th class="col-consumo">📊<br>Consumo-KM/L</th>
+                                    <th class="col-zscore">📈<br>Z-Score</th>
+                                    <th class="col-tipo">⚠️<br>Tipo-Anomalia</th>
+                                    <th class="col-flag-id">🏷️<br>Flag-Id</th>
+                                    <th class="col-flag-tipo">🔖<br>Tipo-Flag</th>
+                                    <th class="col-flag-note">📝<br>Note</th>
+                                    <th class="col-flaggato-da">👮<br>Flaggato-Da</th>
+                                    <th class="col-data-flag">📅<br>Data-Flag</th>
+                                    <th class="col-risolto">✅<br>Stato</th>
+                                    <th class="col-azioni">⚙️<br>Azioni</th>
                                 </tr>
                             </thead>
                             <tbody>
