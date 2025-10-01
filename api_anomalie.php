@@ -57,6 +57,35 @@ try {
 
         echo json_encode(['success' => true]);
         exit();
+    } elseif ($action === 'archivia_anomalia' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $id_rifornimento = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $tipo = $_POST['tipo'] ?? 'ANOMALIA_ARCHIVIATA';
+        $note = $_POST['note'] ?? 'Anomalia archiviata definitivamente';
+
+        if ($id_rifornimento <= 0) throw new Exception('ID non valido');
+
+        // Marca come risolto e archiviato (risolto = 2 per distinguere da normale risoluzione)
+        $upd = $conn->prepare('UPDATE anomalie_flaggate SET risolto = 2, tipo_flag = ?, note = CONCAT(COALESCE(note, ""), " [ARCHIVIATO] ", ?) WHERE id_rifornimento = ?');
+        $upd->bind_param('ssi', $tipo, $note, $id_rifornimento);
+        if (!$upd->execute()) throw new Exception('DB error (update): ' . $upd->error);
+
+        // Se non esisteva un flag, creane uno nuovo direttamente archiviato
+        if ($upd->affected_rows === 0) {
+            // Recupera i dati del rifornimento
+            $stmt = $conn->prepare('SELECT id, username, targa_mezzo FROM chilometri WHERE id = ?');
+            $stmt->bind_param('i', $id_rifornimento);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $r = $res->fetch_assoc();
+            if (!$r) throw new Exception('Rifornimento non trovato');
+
+            $ins = $conn->prepare('INSERT INTO anomalie_flaggate (id_rifornimento, username, targa_mezzo, tipo_flag, flaggato_da, note, risolto) VALUES (?, ?, ?, ?, ?, ?, 2)');
+            $ins->bind_param('isssss', $id_rifornimento, $r['username'], $r['targa_mezzo'], $tipo, $user, $note);
+            if (!$ins->execute()) throw new Exception('DB error (insert): ' . $ins->error);
+        }
+
+        echo json_encode(['success' => true, 'action' => 'archived']);
+        exit();
     } elseif (($action === 'get_dettaglio' || $action === 'get_dettaglio') && $_SERVER['REQUEST_METHOD'] === 'GET') {
         $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
         if ($id <= 0) {

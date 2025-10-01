@@ -17,7 +17,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $targa_mezzo = $_POST['targa_mezzo'] ?? '';
     $divisione = $_POST['divisione'] ?? '';
     $filiale = $_POST['filiale'] ?? '';
-    $livello = $_POST['livello'] ?? ''; // Non so se ti serve salvarlo di nuovo
+    $livello = $_POST['livello'] ?? 1; // Valore di default 1 se non specificato
     $data = $_POST['data'] ?? '';
     $chilometri_iniziali = $_POST['chilometri_iniziali'] ?? 0;
     $chilometri_finali = $_POST['chilometri_finali'] ?? 0;
@@ -93,16 +93,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // che l'utente non ha selezionato un file, quindi $percorso_cedolino_db resterà null (OK)
 
     // --- Inserimento nel Database ---
-    // Prepara la query SQL includendo la nuova colonna 'percorso_cedolino'
-    $sql = $conn->prepare("INSERT INTO chilometri (username, targa_mezzo, divisione, filiale, data, chilometri_iniziali, chilometri_finali, litri_carburante, euro_spesi, percorso_cedolino) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    // Prepara la query SQL includendo la nuova colonna 'percorso_cedolino' e 'livello'
+    $sql = $conn->prepare("INSERT INTO chilometri (username, targa_mezzo, divisione, filiale, livello, data, chilometri_iniziali, chilometri_finali, litri_carburante, euro_spesi, percorso_cedolino) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-    // Aggiorna i tipi nel bind_param (aggiungi 's' per il percorso del cedolino)
+    // Aggiorna i tipi nel bind_param (aggiungi 'i' per livello e 's' per il percorso del cedolino)
     // s = string, i = integer, d = double
-    $sql->bind_param("sssssiidds",
+    $sql->bind_param(
+        "ssssisiidds",
         $username,
         $targa_mezzo,
         $divisione,
         $filiale,
+        $livello,
         $data,
         $chilometri_iniziali,
         $chilometri_finali,
@@ -133,4 +135,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 $conn->close(); // Chiudi la connessione al database
-?>

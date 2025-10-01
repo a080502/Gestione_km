@@ -75,6 +75,323 @@ $filtro_filiale = isset($_GET['filiale']) ? $_GET['filiale'] : '';
 // Include header
 include 'template/header.php';
 
+?>
+<style>
+    /* CSS personalizzato per la tabella anomalie migliorata */
+    .table-anomalie {
+        margin-bottom: 0;
+        font-size: 0.9rem;
+        width: 100%;
+        table-layout: fixed;
+        /* IMPORTANTE: forza layout fisso per prevenire spostamenti */
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-anomalie th {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        color: white;
+        font-weight: 600;
+        text-align: center;
+        padding: 15px 8px;
+        border: none;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        /* Previeni overflow che causa spostamenti */
+    }
+
+    .table-anomalie td {
+        padding: 12px 8px;
+        border-bottom: 1px solid #e9ecef;
+        vertical-align: middle;
+        text-align: center;
+        overflow: hidden;
+        /* Previeni overflow che causa spostamenti */
+        word-wrap: break-word;
+        /* Gestisci testo lungo senza spostare colonne */
+    }
+
+    .table-anomalie tbody tr:hover {
+        background-color: #f8f9fa;
+        transform: scale(1.002);
+        transition: all 0.2s ease;
+    }
+
+    /* Colorazione righe basata sul tipo di anomalia - con struttura fissa */
+    .row-critica,
+    .row-warning,
+    .row-flagged,
+    .row-normale {
+        table-layout: fixed !important;
+        /* Forza layout fisso anche sulle righe */
+    }
+
+    .row-critica {
+        background-color: #f8d7da !important;
+        border-left: 4px solid #dc3545;
+    }
+
+    .row-warning {
+        background-color: #fff3cd !important;
+        border-left: 4px solid #fd7e14;
+    }
+
+    .row-flagged {
+        background-color: #d1ecf1 !important;
+        border-left: 4px solid #0dcaf0;
+    }
+
+    .row-normale {
+        background-color: #d4edda !important;
+        border-left: 4px solid #198754;
+    }
+
+    /* Assicura che le celle delle righe flaggate mantengano le dimensioni */
+    .row-flagged td {
+        padding: 12px 8px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    /* Badge personalizzati */
+    .badge-anomalia {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 25px;
+        font-weight: 600;
+    }
+
+    .badge-critica {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+    }
+
+    .badge-warning {
+        background: linear-gradient(135deg, #fd7e14 0%, #e86b1a 100%);
+        color: white;
+    }
+
+    .badge-normale {
+        background: linear-gradient(135deg, #198754 0%, #146c3f 100%);
+        color: white;
+    }
+
+    .badge-zscore {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-weight: 700;
+    }
+
+    .zscore-alto {
+        background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+        color: white;
+    }
+
+    .zscore-medio {
+        background: linear-gradient(135deg, #ffa502 0%, #ff9500 100%);
+        color: white;
+    }
+
+    .zscore-basso {
+        background: linear-gradient(135deg, #2ed573 0%, #26d65a 100%);
+        color: white;
+    }
+
+    /* Bottoni azione */
+    .btn-action {
+        border-radius: 25px;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin: 0 2px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-dettaglio {
+        background: linear-gradient(135deg, #0066cc 0%, #4c63d2 100%);
+        border: none;
+        color: white;
+    }
+
+    .btn-risolvi {
+        background: linear-gradient(135deg, #198754 0%, #146c3f 100%);
+        border: none;
+        color: white;
+    }
+
+    .btn-flag {
+        background: linear-gradient(135deg, #fd7e14 0%, #e86b1a 100%);
+        border: none;
+        color: white;
+    }
+
+    .btn-archive {
+        background: linear-gradient(135deg, #6f42c1 0%, #563d7c 100%);
+        border: none;
+        color: white;
+    }
+
+    .btn-archive {
+        background: linear-gradient(135deg, #6f42c1 0%, #563d7c 100%);
+        border: none;
+        color: white;
+    }
+
+    /* Colonne specifiche */
+    /* Colonne specifiche con larghezze fisse e !important per prevenire spostamenti */
+    .col-data {
+        width: 90px !important;
+        min-width: 90px;
+        max-width: 90px;
+    }
+
+    .col-utente {
+        width: 120px !important;
+        min-width: 120px;
+        max-width: 120px;
+    }
+
+    .col-targa {
+        width: 90px !important;
+        min-width: 90px;
+        max-width: 90px;
+    }
+
+    .col-filiale {
+        width: 100px !important;
+        min-width: 100px;
+        max-width: 100px;
+    }
+
+    .col-km {
+        width: 80px !important;
+        min-width: 80px;
+        max-width: 80px;
+    }
+
+    .col-carburante {
+        width: 120px !important;
+        min-width: 120px;
+        max-width: 120px;
+    }
+
+    .col-consumo {
+        width: 90px !important;
+        min-width: 90px;
+        max-width: 90px;
+    }
+
+    .col-zscore {
+        width: 100px !important;
+        min-width: 100px;
+        max-width: 100px;
+    }
+
+    .col-tipo {
+        width: 140px !important;
+        min-width: 140px;
+        max-width: 140px;
+    }
+
+    .col-flag-id {
+        width: 80px !important;
+        min-width: 80px;
+        max-width: 80px;
+    }
+
+    .col-flag-tipo {
+        width: 120px !important;
+        min-width: 120px;
+        max-width: 120px;
+    }
+
+    .col-flag-note {
+        width: 200px !important;
+        min-width: 200px;
+        max-width: 200px;
+    }
+
+    .col-flaggato-da {
+        width: 110px !important;
+        min-width: 110px;
+        max-width: 110px;
+    }
+
+    .col-data-flag {
+        width: 130px !important;
+        min-width: 130px;
+        max-width: 130px;
+    }
+
+    .col-risolto {
+        width: 80px !important;
+        min-width: 80px;
+        max-width: 80px;
+    }
+
+    .col-azioni {
+        width: 180px !important;
+        min-width: 180px;
+        max-width: 180px;
+    }
+
+    .text-truncate-custom {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .card-anomalie {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .card-header-anomalie {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        padding: 1.5rem;
+        border: none;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        max-height: 80vh;
+    }
+
+    /* Responsive improvements */
+    @media (max-width: 1400px) {
+
+        .table-anomalie th,
+        .table-anomalie td {
+            padding: 10px 6px;
+            font-size: 0.8rem;
+        }
+    }
+
+    @media (max-width: 1200px) {
+
+        .table-anomalie th,
+        .table-anomalie td {
+            padding: 8px 4px;
+            font-size: 0.75rem;
+        }
+    }
+</style>
+<?php
+
 // Funzioni di analisi
 function calcolaConsumiMedi($conn, $targa = '', $mesi = 12)
 {
@@ -410,84 +727,233 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
     <?php if (!empty($dati_anomalie)): ?>
         <div class="row mb-4">
             <div class="col-12">
-                <div class="card border-danger">
-                    <div class="card-header bg-danger text-white">
-                        <h5 class="mb-0"><i class="bi bi-shield-x me-2"></i>Anomalie Critiche Rilevate</h5>
+                <div class="card-anomalie">
+                    <div class="card-header-anomalie">
+                        <h4 class="mb-0">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            Anomalie Critiche Rilevate - Analisi Dettagliata
+                        </h4>
+                        <small>Ordinamento per Z-Score decrescente - Soglia di rilevamento: 2.0σ</small>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%; border-collapse: collapse;">
-                                <thead class="table-danger">
-                                    <tr>
-                                        <th style="width: 100px; border: 1px solid #ccc;">Data</th>
-                                        <th style="width: 120px; border: 1px solid #ccc;">Utente</th>
-                                        <th style="width: 100px; border: 1px solid #ccc;">Targa</th>
-                                        <th style="width: 80px; border: 1px solid #ccc;">KM</th>
-                                        <th style="width: 80px; border: 1px solid #ccc;">Litri</th>
-                                        <th style="width: 90px; border: 1px solid #ccc;">€</th>
-                                        <th style="width: 80px; border: 1px solid #ccc;">KM/L</th>
-                                        <th style="width: 80px; border: 1px solid #ccc;">Z-Score</th>
-                                        <th style="width: 100px; border: 1px solid #ccc;">Tipo Anomalia</th>
-                                        <th style="width: 100px; border: 1px solid #ccc;">Azioni</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach (array_slice($dati_anomalie, 0, 10) as $anomalia):
-                                        $is_flagged = $anomalia['is_flagged'] == 1;
-                                        $row_class = $is_flagged ? 'table-info' : ($anomalia['z_score'] > 3 ? 'table-danger' : 'table-warning');
-                                    ?>
-                                        <tr class="<?php echo $row_class; ?>" data-anomalia-id="<?php echo $anomalia['id']; ?>">
-                                            <td style="width: 100px; border: 1px solid #ddd; padding: 8px;">
-                                                <?php echo date('d/m/Y', strtotime($anomalia['data'])); ?>
-                                            </td>
-                                            <td style="width: 120px; border: 1px solid #ddd; padding: 8px;"><strong><?php echo htmlspecialchars($anomalia['username']); ?></strong></td>
-                                            <td style="width: 100px; border: 1px solid #ddd; padding: 8px;"><?php echo htmlspecialchars($anomalia['targa_mezzo']); ?></td>
-                                            <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['km_percorsi']); ?></td>
-                                            <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['litri'], 2); ?></td>
-                                            <td style="width: 90px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['euro_spesi'], 2); ?>€</td>
-                                            <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: right;"><?php echo number_format($anomalia['km_per_litro'], 2); ?></td>
-                                            <td style="width: 80px; border: 1px solid #ddd; padding: 8px; text-align: center;">
-                                                <span class="badge <?php echo $anomalia['z_score'] > 3 ? 'bg-danger' : 'bg-warning'; ?>">
-                                                    <?php echo number_format($anomalia['z_score'], 2); ?>
-                                                </span>
-                                            </td>
-                                            <td style="width: 100px; border: 1px solid #ddd; padding: 8px;">
-                                                <span class="badge bg-secondary" style="font-size: 0.7em;"><?php echo htmlspecialchars(str_replace(['CONSUMO_TROPPO_', 'KM_ZERO_CON_', 'MOLTI_KM_POCO_', 'PREZZO_CARBURANTE_'], ['', 'KM_ZERO_', 'MOLTI_KM_', 'PREZZO_'], $anomalia['tipo_anomalia'])); ?></span>
-                                            </td>
-                                            <td style="width: 100px; border: 1px solid #ddd; padding: 8px; text-align: center;">
-                                                <div class="btn-group btn-group-sm">
-                                                    <button class="btn btn-outline-primary btn-sm" onclick="dettaglioAnomalia(<?php echo $anomalia['id']; ?>)">
-                                                        <i class="bi bi-eye"></i>
-                                                    </button>
-                                                    <?php if ($is_flagged): ?>
-                                                        <button class="btn btn-outline-success btn-sm" onclick="unflagAnomalia(<?php echo $anomalia['id']; ?>)" title="Marca come Risolto">
-                                                            <i class="bi bi-check-circle"></i>
-                                                        </button>
-                                                    <?php else: ?>
-                                                        <button class="btn btn-outline-warning btn-sm" onclick="flagAnomalia(<?php echo $anomalia['id']; ?>)" title="Marca come Completato">
-                                                            <i class="bi bi-check"></i>
-                                                        </button>
-                                                    <?php endif; ?>
+
+                    <div class="table-container">
+                        <table class="table table-anomalie">
+                            <thead>
+                                <tr>
+                                    <th class="col-data">📅<br>Data</th>
+                                    <th class="col-utente">👤<br>Utente</th>
+                                    <th class="col-targa">🚗<br>Targa</th>
+                                    <th class="col-filiale">🏢<br>Filiale</th>
+                                    <th class="col-km">📏<br>KM<br>Percorsi</th>
+                                    <th class="col-carburante">⛽💰💲<br>Litri<br>Euro<br>€/L</th>
+                                    <th class="col-consumo">📊<br>Consumo<br>KM/L</th>
+                                    <th class="col-zscore">📈<br>Z-Score<br>Deviazione</th>
+                                    <th class="col-tipo">⚠️<br>Tipo<br>Anomalia</th>
+                                    <th class="col-flag-id">🏷️<br>Flag<br>ID</th>
+                                    <th class="col-flag-tipo">🔖<br>Tipo<br>Flag</th>
+                                    <th class="col-flag-note">📝<br>Note<br>Flag</th>
+                                    <th class="col-flaggato-da">👮<br>Flaggato<br>Da</th>
+                                    <th class="col-data-flag">📅<br>Data<br>Flag</th>
+                                    <th class="col-risolto">✅<br>Stato<br>Risoluzione</th>
+                                    <th class="col-azioni">⚙️<br>Azioni<br>Disponibili</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach (array_slice($dati_anomalie, 0, 10) as $anomalia):
+                                    $is_flagged = $anomalia['is_flagged'] == 1;
+                                    $z_score = floatval($anomalia['z_score']);
+
+                                    // Determina la classe della riga
+                                    if ($is_flagged) {
+                                        $row_class = 'row-flagged';
+                                    } elseif ($z_score > 3) {
+                                        $row_class = 'row-critica';
+                                    } elseif ($z_score > 2) {
+                                        $row_class = 'row-warning';
+                                    } else {
+                                        $row_class = 'row-normale';
+                                    }
+
+                                    // Calcola prezzo per litro
+                                    $prezzo_per_litro = $anomalia['litri'] > 0 ? $anomalia['euro_spesi'] / $anomalia['litri'] : 0;
+                                ?>
+                                    <tr class="<?php echo $row_class; ?>" data-anomalia-id="<?php echo $anomalia['id']; ?>">
+                                        <!-- Data -->
+                                        <td class="col-data">
+                                            <strong><?php echo date('d/m/Y', strtotime($anomalia['data'])); ?></strong>
+                                        </td>
+
+                                        <!-- Utente -->
+                                        <td class="col-utente">
+                                            <strong><?php echo htmlspecialchars($anomalia['username']); ?></strong>
+                                        </td>
+
+                                        <!-- Targa -->
+                                        <td class="col-targa">
+                                            <span class="badge bg-secondary"><?php echo htmlspecialchars($anomalia['targa_mezzo']); ?></span>
+                                        </td>
+
+                                        <!-- Filiale -->
+                                        <td class="col-filiale">
+                                            <?php echo htmlspecialchars($anomalia['filiale'] ?? 'N/A'); ?>
+                                        </td>
+
+                                        <!-- KM Percorsi -->
+                                        <td class="col-km">
+                                            <strong><?php echo number_format($anomalia['km_percorsi']); ?></strong>
+                                        </td>
+
+                                        <!-- Carburante (Litri + Euro + Prezzo) -->
+                                        <td class="col-carburante">
+                                            <div style="line-height: 1.2;">
+                                                <div><strong><?php echo number_format($anomalia['litri'], 2); ?>L</strong></div>
+                                                <div style="color: #007bff; font-weight: bold;"><?php echo number_format($anomalia['euro_spesi'], 2); ?>€</div>
+                                                <div>
+                                                    <span class="badge <?php echo $prezzo_per_litro > 2.5 ? 'bg-danger' : ($prezzo_per_litro < 1.2 ? 'bg-warning' : 'bg-success'); ?>" style="font-size: 0.7rem; padding: 2px 6px;">
+                                                        <?php echo number_format($prezzo_per_litro, 2); ?>€/L
+                                                    </span>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                        <?php if (count($dati_anomalie) > 10): ?>
-                            <div class="card-footer text-center">
-                                <div class="btn-group">
+                                            </div>
+                                        </td>
+
+                                        <!-- Consumo KM/L -->
+                                        <td class="col-consumo">
+                                            <?php echo number_format($anomalia['km_per_litro'], 2); ?>
+                                        </td>
+
+                                        <!-- Z-Score -->
+                                        <td class="col-zscore">
+                                            <span class="badge badge-zscore <?php
+                                                                            echo $z_score > 3 ? 'zscore-alto' : ($z_score > 2 ? 'zscore-medio' : 'zscore-basso');
+                                                                            ?>">
+                                                <?php echo number_format($z_score, 2); ?>σ
+                                            </span>
+                                        </td>
+
+                                        <!-- Tipo Anomalia -->
+                                        <td class="col-tipo">
+                                            <span class="badge badge-anomalia <?php
+                                                                                echo strpos($anomalia['tipo_anomalia'], 'SOSPETTO') !== false ? 'badge-critica' : ($anomalia['tipo_anomalia'] === 'NORMALE' ? 'badge-normale' : 'badge-warning');
+                                                                                ?>">
+                                                <?php
+                                                $tipo_display = str_replace([
+                                                    'CONSUMO_TROPPO_',
+                                                    'KM_ZERO_CON_',
+                                                    'MOLTI_KM_POCO_',
+                                                    'PREZZO_CARBURANTE_'
+                                                ], [
+                                                    'CONSUMO ',
+                                                    'KM ZERO ',
+                                                    'MOLTI KM ',
+                                                    'PREZZO '
+                                                ], $anomalia['tipo_anomalia']);
+                                                echo htmlspecialchars($tipo_display);
+                                                ?>
+                                            </span>
+                                        </td>
+
+                                        <!-- Flag ID -->
+                                        <td class="col-flag-id">
+                                            <?php echo htmlspecialchars($anomalia['flag_id'] ?? '-'); ?>
+                                        </td>
+
+                                        <!-- Tipo Flag -->
+                                        <td class="col-flag-tipo">
+                                            <?php if (!empty($anomalia['tipo_flag'])): ?>
+                                                <span class="badge bg-info"><?php echo htmlspecialchars($anomalia['tipo_flag']); ?></span>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+
+                                        <!-- Note Flag -->
+                                        <td class="col-flag-note">
+                                            <?php if (!empty($anomalia['note_flag'])): ?>
+                                                <span class="text-truncate-custom" title="<?php echo htmlspecialchars($anomalia['note_flag']); ?>">
+                                                    <?php echo htmlspecialchars($anomalia['note_flag']); ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+
+                                        <!-- Flaggato Da -->
+                                        <td class="col-flaggato-da">
+                                            <?php echo htmlspecialchars($anomalia['flaggato_da'] ?? '-'); ?>
+                                        </td>
+
+                                        <!-- Data Flag -->
+                                        <td class="col-data-flag">
+                                            <?php echo !empty($anomalia['data_flag']) ? date('d/m/Y H:i', strtotime($anomalia['data_flag'])) : '-'; ?>
+                                        </td>
+
+                                        <!-- Stato Risoluzione -->
+                                        <td class="col-risolto">
+                                            <?php if (isset($anomalia['risolto']) && $anomalia['risolto'] == 2): ?>
+                                                <span class="badge bg-secondary">🗃️ Archiviato</span>
+                                            <?php elseif (isset($anomalia['risolto']) && $anomalia['risolto'] == 1): ?>
+                                                <span class="badge bg-success">✅ Risolto</span>
+                                            <?php elseif ($is_flagged): ?>
+                                                <span class="badge bg-warning">⏳ In Corso</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-danger">❌ Aperto</span>
+                                            <?php endif; ?>
+                                        </td>
+
+                                        <!-- Azioni -->
+                                        <td class="col-azioni">
+                                            <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                                <!-- Bottone Dettaglio -->
+                                                <button class="btn btn-action btn-dettaglio"
+                                                    onclick="dettaglioAnomalia(<?php echo $anomalia['id']; ?>)"
+                                                    title="Visualizza Dettagli">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+
+                                                <!-- Bottone Flag/Unflag -->
+                                                <?php if ($is_flagged): ?>
+                                                    <button class="btn btn-action btn-risolvi"
+                                                        onclick="unflagAnomalia(<?php echo $anomalia['id']; ?>)"
+                                                        title="Marca come Risolto">
+                                                        <i class="bi bi-check-circle"></i>
+                                                    </button>
+                                                    <button class="btn btn-action btn-archive"
+                                                        onclick="archiviaAnomalia(<?php echo $anomalia['id']; ?>)"
+                                                        title="Archivia Definitivamente">
+                                                        <i class="bi bi-archive"></i>
+                                                    </button>
+                                                <?php else: ?>
+                                                    <button class="btn btn-action btn-flag"
+                                                        onclick="flagAnomalia(<?php echo $anomalia['id']; ?>)"
+                                                        title="Segnala Anomalia">
+                                                        <i class="bi bi-flag"></i>
+                                                    </button>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Footer con azioni aggiuntive -->
+                    <?php if (count($dati_anomalie) > 10): ?>
+                        <div class="card-footer bg-light text-center p-3">
+                            <div class="row">
+                                <div class="col-md-6">
                                     <button class="btn btn-outline-primary" onclick="mostraTutteAnomalie()">
                                         Mostra tutte le <?php echo count($dati_anomalie); ?> anomalie
                                     </button>
+                                </div>
+                                <div class="col-md-6">
                                     <button class="btn btn-outline-success" onclick="esportaSoloAnomalie()">
                                         <i class="bi bi-file-excel me-2"></i>Esporta Solo Anomalie
                                     </button>
                                 </div>
                             </div>
-                        <?php endif; ?>
-                    </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -879,26 +1345,9 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // Aggiorna la riga DOM per indicare che è flaggata
-                        if (row) {
-                            row.classList.remove('table-danger', 'table-warning');
-                            row.classList.add('table-info');
-                            row.style.opacity = '1';
-
-                            // Sostituisci i bottoni: mostra il pulsante unflag
-                            const actionsTd = row.querySelector('td:last-child');
-                            if (actionsTd) {
-                                actionsTd.innerHTML = `
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary btn-sm" onclick="dettaglioAnomalia(${id})">
-                                            <i class="bi bi-eye"></i>
-                                        </button>
-                                        <button class="btn btn-outline-success btn-sm" onclick="unflagAnomalia(${id})" title="Marca come Risolto">
-                                            <i class="bi bi-check-circle"></i>
-                                        </button>
-                                    </div>`;
-                            }
-                        }
+                        // Ricarica la pagina per mostrare i dati aggiornati
+                        alert('Anomalia marcata come verificata!');
+                        location.reload();
                     } else {
                         alert('Errore: ' + data.error);
                         if (row) {
@@ -935,33 +1384,9 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // Imposta lo stato visivo come non flaggato
-                        if (row) {
-                            row.classList.remove('table-info');
-                            // mantenere la classe basata su z_score: se >3 table-danger altrimenti table-warning
-                            const zBadge = row.querySelector('.badge');
-                            const zValue = zBadge ? parseFloat(zBadge.textContent) : null;
-                            if (zValue !== null && !isNaN(zValue) && zValue > 3) {
-                                row.classList.add('table-danger');
-                            } else {
-                                row.classList.add('table-warning');
-                            }
-                            row.style.opacity = '1';
-
-                            // Sostituisci i bottoni: mostra il pulsante flag
-                            const actionsTd = row.querySelector('td:last-child');
-                            if (actionsTd) {
-                                actionsTd.innerHTML = `
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary btn-sm" onclick="dettaglioAnomalia(${id})">
-                                            <i class="bi bi-eye"></i>
-                                        </button>
-                                        <button class="btn btn-outline-warning btn-sm" onclick="flagAnomalia(${id})" title="Marca come Completato">
-                                            <i class="bi bi-check"></i>
-                                        </button>
-                                    </div>`;
-                            }
-                        }
+                        // Ricarica la pagina per mostrare i dati aggiornati
+                        alert('Marcatura rimossa con successo!');
+                        location.reload();
                     } else {
                         alert('Errore: ' + data.error);
                         if (row) {
@@ -972,6 +1397,88 @@ while ($row = $statistiche_utenti->fetch_assoc()) {
                 .catch(error => {
                     console.error('Error:', error);
                     alert('Errore durante la rimozione della marcatura');
+                    if (row) {
+                        row.style.opacity = '1';
+                    }
+                });
+        }
+    }
+
+    function archiviaAnomalia(id) {
+        if (confirm('Vuoi archiviare definitivamente questa anomalia? \nQuesta operazione la marcherà come risolta e non apparirà più nei report.')) {
+            // Mostra loading
+            const row = document.querySelector(`tr[data-anomalia-id="${id}"]`);
+            if (row) {
+                row.style.opacity = '0.5';
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'archivia_anomalia');
+            formData.append('id', id);
+            formData.append('tipo', 'ANOMALIA_ARCHIVIATA');
+            formData.append('note', prompt('Note di archiviazione (opzionale):') || 'Anomalia archiviata definitivamente');
+
+            fetch('api_anomalie.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Ricarica la pagina per mostrare i dati aggiornati
+                        alert('Anomalia archiviata con successo!');
+                        location.reload();
+                    } else {
+                        alert('Errore: ' + data.error);
+                        if (row) {
+                            row.style.opacity = '1';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Errore durante l\'archiviazione');
+                    if (row) {
+                        row.style.opacity = '1';
+                    }
+                });
+        }
+    }
+
+    function archiviaAnomalia(id) {
+        if (confirm('Vuoi archiviare definitivamente questa anomalia? \nQuesta operazione la marcherà come risolta e non apparirà più nei report.')) {
+            // Mostra loading
+            const row = document.querySelector(`tr[data-anomalia-id="${id}"]`);
+            if (row) {
+                row.style.opacity = '0.5';
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'archivia_anomalia');
+            formData.append('id', id);
+            formData.append('tipo', 'ANOMALIA_ARCHIVIATA');
+            formData.append('note', prompt('Note di archiviazione (opzionale):') || 'Anomalia archiviata definitivamente');
+
+            fetch('api_anomalie.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Ricarica la pagina per mostrare i dati aggiornati
+                        alert('Anomalia archiviata con successo!');
+                        location.reload();
+                    } else {
+                        alert('Errore: ' + data.error);
+                        if (row) {
+                            row.style.opacity = '1';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Errore durante l\'archiviazione');
                     if (row) {
                         row.style.opacity = '1';
                     }
